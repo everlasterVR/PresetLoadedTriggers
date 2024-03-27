@@ -1,0 +1,21 @@
+{
+  "licenseType": "Questionable",
+  "creatorName": "everlaster",
+  "packageName": "PresetLoadedTriggers",
+  "standardReferenceVersionOption": "Latest",
+  "scriptReferenceVersionOption": "Exact",
+  "description": "v0.0.0. ",
+  "credits": "",
+  "instructions": "",
+  "promotionalLink": "",
+  "programVersion": "1.22.0.3",
+  "contentList": [
+    "Custom/Scripts/everlaster/PresetLoadedTriggers/PresetLoadedTriggers.cslist",
+    "Custom/Scripts/everlaster/PresetLoadedTriggers/src"
+  ],
+  "dependencies": {
+  },
+  "customOptions": {
+    "preloadMorphs": "false"
+  }
+}
