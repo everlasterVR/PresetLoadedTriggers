@@ -87,6 +87,8 @@ namespace everlaster
         {
             var json = base.GetJSON(includePhysical, includeAppearance, forceStore);
             json[JSONKeys.VERSION] = VERSION;
+            needsStore = true;
+
             for(int i = 0; i < _triggers.Count; i++)
             {
                 _triggers[i].StoreToJSON(json);

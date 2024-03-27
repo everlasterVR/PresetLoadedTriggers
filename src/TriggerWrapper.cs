@@ -130,7 +130,25 @@ namespace everlaster
 
         public void StoreToJSON(JSONClass jc)
         {
-            jc[_eventTrigger.Name] = _eventTrigger.GetJSON();
+            var eventJson = _eventTrigger.GetJSON();
+            if(eventJson.HasKey("transitionActions"))
+            {
+                eventJson.Remove("transitionActions");
+            }
+
+            if(eventJson.HasKey("endActions"))
+            {
+                eventJson.Remove("endActions");
+            }
+
+            if(eventJson.HasKey("startActions"))
+            {
+                var startActions = eventJson["startActions"].AsArray;
+                if(startActions.Count > 0)
+                {
+                    jc[_eventTrigger.Name] = eventJson;
+                }
+            }
         }
 
         public void RestoreFromJSON(JSONClass jc)
