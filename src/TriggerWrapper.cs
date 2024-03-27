@@ -10,6 +10,7 @@ namespace everlaster
     {
         readonly PresetLoadedTriggers _script;
         readonly EventTrigger _eventTrigger;
+        readonly PresetManager _presetManager;
         bool _opened;
 
         public string GetName() => _eventTrigger.Name;
@@ -18,7 +19,8 @@ namespace everlaster
         {
             _script = script;
             _eventTrigger = new EventTrigger(script, name);
-            presetManager.postLoadEvent.AddListener(Trigger); // TODO add only after first trigger is created
+            _presetManager = presetManager;
+            _presetManager.postLoadEvent.AddListener(Trigger); // TODO add only after first trigger is created
         }
 
         public void OpenPanel()
@@ -144,6 +146,14 @@ namespace everlaster
             catch(Exception e)
             {
                 _script.logBuilder.Error("{0}.{1}: {2}", _eventTrigger.Name, nameof(RestoreFromJSON), e);
+            }
+        }
+
+        public void OnDestroy()
+        {
+            if(_presetManager != null)
+            {
+                _presetManager.postLoadEvent.RemoveListener(Trigger);
             }
         }
     }

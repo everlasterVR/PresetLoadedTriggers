@@ -109,7 +109,10 @@ namespace everlaster
             try
             {
                 base.OnDestroy();
-
+                foreach(var trigger in _triggers)
+                {
+                    trigger.OnDestroy();
+                }
             }
             catch(Exception e)
             {
