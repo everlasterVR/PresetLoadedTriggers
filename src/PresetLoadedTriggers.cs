@@ -5,6 +5,8 @@ using UnityEngine;
 using MacGruber;
 using MeshVR;
 using System.Collections.Generic;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace everlaster
 {
@@ -24,28 +26,32 @@ namespace everlaster
 
                 if(containingAtom.type == "SessionPluginManager")
                 {
-                    // var sessionPluginsPresetManager = containingAtom.GetComponent<PresetManager>();
-                    // _triggers.Add(new TriggerWrapper(this, "SessionPluginPresets"));
+                    AddTrigger("On Session Plugin Preset Loaded", containingAtom.GetComponent<PresetManager>());
                 }
                 else if(containingAtom.name == "CoreControl")
                 {
-                    // var scenePluginsPresetManager = containingAtom.GetStorableByID("PluginManagerPresets").GetComponent<PresetManager>();
-                    // _triggers.Add(new TriggerWrapper(this, "ScenePluginPresets"));
+                    AddTrigger("On Scene Plugin Preset Loaded", "PluginManagerPresets");
                 }
                 else if(containingAtom.type == "Person")
                 {
-                    var appearancePresetManager = containingAtom.GetStorableByID("AppearancePresets").GetComponent<PresetManager>();
-                    const string triggerName = "On Appearance Preset Loaded";
-                    var trigger = new TriggerWrapper(this, triggerName, appearancePresetManager);
-                    _triggers.Add(trigger);
-
-                    // var animationPresetManager = containingAtom.GetStorableByID("AnimationPresets").GetComponent<PresetManager>();
-                    // var pluginPresetManager = containingAtom.GetStorableByID("PluginPresets").GetComponent<PresetManager>();
-                    // ...
+                    var sb = new StringBuilder();
+                    var ids = containingAtom.GetStorableIDs();
+                    for(int i = 0; i < ids.Count; i++)
+                    {
+                        string id = ids[i];
+                        if(id == "Preset")
+                        {
+                            AddTrigger("General Preset", "Preset");
+                        }
+                        else if(id.EndsWith("Preset") || id.EndsWith("Presets"))
+                        {
+                            AddTrigger(ToTriggerName(id, sb), id);
+                        }
+                    }
                 }
                 else
                 {
-                    // var presetManager = containingAtom.GetStorableByID("Preset").GetComponent<PresetManager>();
+                    AddTrigger("On Preset Loaded", "Preset");
                 }
 
                 forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
@@ -61,13 +67,66 @@ namespace everlaster
             }
         }
 
+        static string ToTriggerName(string input, StringBuilder sb)
+        {
+            var pattern = Utils.NewRegex("(?<!^)(?=[A-Z])");
+            string separatedString = pattern.Replace(input, " ");
+            int spaceIndex = separatedString.LastIndexOf(" ", StringComparison.Ordinal);
+
+            sb.Clear();
+            if(spaceIndex >= 0)
+            {
+                sb.Append(separatedString.Substring(0, spaceIndex));
+                sb.Append(" ");
+            }
+
+            sb.Append("Preset");
+            return sb.ToString();
+        }
+
+        void AddTrigger(string name, string storableId)
+        {
+            var storable = containingAtom.GetStorableByID(storableId);
+            if(storable == null)
+            {
+                return;
+            }
+
+            var presetManager = storable.GetComponent<PresetManager>();
+            if(presetManager == null)
+            {
+                return;
+            }
+
+            AddTrigger(name, presetManager);
+        }
+
+        void AddTrigger(string name, PresetManager presetManager) => _triggers.Add(new TriggerWrapper(this, name, presetManager));
+
         protected override void BuildUI()
         {
+            var title = CreateTextField(new JSONStorableString("Title", "\nPreset Loaded Triggers"));
+            title.UItext.fontSize = 32;
+            title.UItext.fontStyle = FontStyle.Bold;
+            title.UItext.alignment = TextAnchor.LowerCenter;
+            title.backgroundColor = Color.clear;
+            title.height = 100f;
+
+            // TODO if person, sort always available by predefined, then sort dynamic below alphabetically
+            // TODO possible to sort clothing item presets into one category and hair item presets into another?
             foreach(var trigger in _triggers)
             {
                 var triggerButton = CreateButton(trigger.GetName());
                 triggerButton.AddListener(trigger.OpenPanel);
+                var textComponent = triggerButton.buttonText;
+                textComponent.resizeTextForBestFit = true;
+                textComponent.resizeTextMinSize = 24;
+                textComponent.resizeTextMaxSize = 28;
+                textComponent.alignment = TextAnchor.MiddleLeft;
                 triggerButton.height = 50f;
+                var textRect = triggerButton.transform.Find("Text").GetComponent<RectTransform>();
+                var size = textRect.sizeDelta;
+                textRect.sizeDelta = new Vector2(size.x - 30f, size.y);
             }
 
             CreateToggle(forceExecuteTriggersBool, true).label = "Force execute triggers";

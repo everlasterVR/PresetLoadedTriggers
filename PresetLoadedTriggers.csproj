@@ -100,6 +100,7 @@
         <Compile Include="src\Storables\StorableString.cs" />
         <Compile Include="src\Storables\StorableStringChooser.cs" />
         <Compile Include="src\TriggerWrapper.cs" />
+        <Compile Include="src\Utils\DevUtils.cs" />
         <Compile Include="src\Utils\FileUtils.cs" />
         <Compile Include="src\Utils\JSONUtils.cs" />
         <Compile Include="src\Utils\LogBuilder.cs" />

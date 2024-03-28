@@ -6,6 +6,9 @@ https://www.patreon.com/MacGruber_Laboratory
 Licensed under CC-BY. (see https://creativecommons.org/licenses/by/4.0/)
 Feel free to incorporate this libary in your releases, but credit is required.
 
+Non triggers related code removed by everlaster, plus minor edits.
+Original MacGruber_Utils.cs: https://hub.virtamate.com/resources/macgruber-utils.40744/
+
 ///////////////////////////////////////////////////////////////////////////////////////////////// */
 
 using UnityEngine;
@@ -213,6 +216,9 @@ namespace MacGruber
 
 		protected override void InitPanel()
 		{
+			Transform panel = triggerActionsPanel.Find("Panel");
+			panel.Find("Header Text").GetComponent<RectTransform>().sizeDelta = new Vector2(1000f, 50f);
+
 			Transform content = triggerActionsPanel.Find("Content");
 			content.Find("Tab1/Label").GetComponent<Text>().text = "Event Actions";
 			content.Find("Tab2").gameObject.SetActive(false);

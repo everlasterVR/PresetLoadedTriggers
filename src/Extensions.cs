@@ -232,7 +232,6 @@ namespace everlaster
         public static StringBuilder Clear(this StringBuilder sb)
         {
             sb.Length = 0;
-            sb.Capacity = 0;
             return sb;
         }
     }
