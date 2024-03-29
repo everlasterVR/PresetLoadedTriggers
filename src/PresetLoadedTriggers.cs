@@ -60,13 +60,14 @@ namespace everlaster
                         {
                             AddTrigger("General Preset", "Preset");
                         }
-                        else if(id.EndsWith("Preset") || id.EndsWith("Presets"))
+                        // else if(id.EndsWith("Preset") || id.EndsWith("Presets")))
+                        else if(_personPresetManagerNames.Contains(id))
                         {
                             AddTrigger(ToTriggerName(id, sb), id);
                         }
                     }
 
-                    FindGeometry();
+                    // FindGeometry();
                 }
                 else
                 {
@@ -108,15 +109,31 @@ namespace everlaster
             var storable = containingAtom.GetStorableByID(storableId);
             if(storable == null)
             {
+                logBuilder.Debug($"Storable {storableId} not found");
                 return;
             }
 
             var presetManager = storable.GetComponent<PresetManager>();
             if(presetManager == null)
             {
+                logBuilder.Debug($"PresetManager not found on {storableId}");
                 return;
             }
 
+            // if(containingAtom.type == "Person")
+            // {
+            //     AddPersonTrigger(storable, name, presetManager);
+            // }
+            // else
+            // {
+            //     AddTrigger(name, presetManager);
+            // }
+
+            AddTrigger(name, presetManager);
+        }
+
+        void AddPersonTrigger(JSONStorable storable, string name, PresetManager presetManager)
+        {
             DynamicItemParams dynamicItemParams = null;
             var parent = storable.transform.parent;
             var clothingItem = parent.GetComponent<DAZClothingItem>();
@@ -151,8 +168,9 @@ namespace everlaster
 
         protected override void BuildUI()
         {
-            CreateSpacer().height = 85;
-            CreateSpacer(true).height = 130;
+            CreateSpacer().height = 100f;
+            CreateSpacer(true).height = 85f;
+            // CreateSpacer(true).height = 130;
             var verticalLayoutGroup = leftUIContent.GetComponent<VerticalLayoutGroup>();
             verticalLayoutGroup.spacing = 0f;
 
@@ -172,36 +190,27 @@ namespace everlaster
                 DisableScroll(uiDynamic);
             }
 
-            var exceptSet = new HashSet<TriggerWrapper>();
             if(containingAtom.type == "Person")
             {
-                CreateSubHeader("Category1", "Built In Presets");
-
                 for(int i = 0; i < _personPresetManagerNames.Count; i++)
                 {
                     string presetManagerName = _personPresetManagerNames[i];
                     var trigger = _triggers.Values.FirstOrDefault(x => x.GetPresetManagerName() == presetManagerName);
                     if(trigger != null)
                     {
-                        exceptSet.Add(trigger);
                         CreateTriggerButton(trigger);
                     }
                 }
-
-                CreateSubHeader("Category2", "\nHair/Clothing Item Presets", 100f);
             }
             else
             {
-                CreateSpacer().height = 60f;
+                foreach(var pair in _triggers)
+                {
+                    CreateTriggerButton(pair.Value);
+                }
             }
 
-            var remaining = new List<TriggerWrapper>(_triggers.Values.Except(exceptSet));
-            remaining.Sort((a, b) => string.Compare(a.eventTrigger.Name, b.eventTrigger.Name, StringComparison.Ordinal));
-            for(int i = 0; i < remaining.Count; i++)
-            {
-                var trigger = remaining[i];
-                CreateTriggerButton(trigger);
-            }
+            // CreateAltPersonList();
 
             CreateToggle(forceExecuteTriggersBool, true).label = "Force execute triggers";
             CreateToggle(enableLoggingBool, true).label = "Enable logging";
@@ -232,6 +241,40 @@ namespace everlaster
                 textComponent.fontSize = 26;
                 textComponent.color = new Color(0, 0, 0, 0.80f);
                 DisableScroll(uiDynamic, rightUIContent);
+            }
+        }
+
+        void CreateAltPersonList()
+        {
+            var exceptSet = new HashSet<TriggerWrapper>();
+            if(containingAtom.type == "Person")
+            {
+                CreateSubHeader("Category1", "Built In Presets");
+
+                for(int i = 0; i < _personPresetManagerNames.Count; i++)
+                {
+                    string presetManagerName = _personPresetManagerNames[i];
+                    var trigger = _triggers.Values.FirstOrDefault(x => x.GetPresetManagerName() == presetManagerName);
+                    if(trigger != null)
+                    {
+                        exceptSet.Add(trigger);
+                        CreateTriggerButton(trigger);
+                    }
+                }
+
+                CreateSubHeader("Category2", "\nHair/Clothing Item Presets", 100f);
+            }
+            else
+            {
+                CreateSpacer().height = 60f;
+            }
+
+            var remaining = new List<TriggerWrapper>(_triggers.Values.Except(exceptSet));
+            remaining.Sort((a, b) => string.Compare(a.eventTrigger.Name, b.eventTrigger.Name, StringComparison.Ordinal));
+            for(int i = 0; i < remaining.Count; i++)
+            {
+                var trigger = remaining[i];
+                CreateTriggerButton(trigger);
             }
         }
 
@@ -371,7 +414,7 @@ namespace everlaster
                             }
                             else
                             {
-                                missingList.Add(triggerJson);
+                                // missingList.Add(triggerJson);
                             }
                         }
                     }
