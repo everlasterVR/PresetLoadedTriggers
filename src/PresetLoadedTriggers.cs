@@ -39,40 +39,43 @@ namespace everlaster
         {
             try
             {
+                if(containingAtom.type != "Person")
+                {
+                    logBuilder.ErrorNoReport("Add to a Person atom, not {0}", containingAtom.type);
+                    return;
+                }
+
+                // if(containingAtom.type == "SessionPluginManager")
+                // {
+                //     AddTrigger("Session Plugin Preset", containingAtom.GetComponent<PresetManager>());
+                // }
+                // else if(containingAtom.name == "CoreControl")
+                // {
+                //     AddTrigger("Scene Plugin Preset", "PluginManagerPresets");
+                // }
+
                 SimpleTriggerHandler.LoadAssets();
-
-                if(containingAtom.type == "SessionPluginManager")
+                var sb = new StringBuilder();
+                var ids = containingAtom.GetStorableIDs();
+                for(int i = 0; i < ids.Count; i++)
                 {
-                    AddTrigger("Session Plugin Preset", containingAtom.GetComponent<PresetManager>());
-                }
-                else if(containingAtom.name == "CoreControl")
-                {
-                    AddTrigger("Scene Plugin Preset", "PluginManagerPresets");
-                }
-                else if(containingAtom.type == "Person")
-                {
-                    var sb = new StringBuilder();
-                    var ids = containingAtom.GetStorableIDs();
-                    for(int i = 0; i < ids.Count; i++)
+                    string id = ids[i];
+                    if(id == "Preset")
                     {
-                        string id = ids[i];
-                        if(id == "Preset")
-                        {
-                            AddTrigger("General Preset", "Preset");
-                        }
-                        // else if(id.EndsWith("Preset") || id.EndsWith("Presets")))
-                        else if(_personPresetManagerNames.Contains(id))
-                        {
-                            AddTrigger(ToTriggerName(id, sb), id);
-                        }
+                        AddTrigger("General Preset", "Preset");
                     }
+                    // else if(id.EndsWith("Preset") || id.EndsWith("Presets")))
+                    else if(_personPresetManagerNames.Contains(id))
+                    {
+                        AddTrigger(ToTriggerName(id, sb), id);
+                    }
+                }
 
-                    // FindGeometry();
-                }
-                else
-                {
-                    AddTrigger("Preset", "Preset");
-                }
+                // FindGeometry();
+                // else
+                // {
+                //     AddTrigger("Preset", "Preset");
+                // }
 
                 forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
                 enableLoggingBool = new JSONStorableBool("enableLogging", false);
