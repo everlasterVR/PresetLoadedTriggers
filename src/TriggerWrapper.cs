@@ -2,6 +2,7 @@
 using MacGruber;
 using MeshVR;
 using SimpleJSON;
+using System.Linq;
 using UnityEngine;
 
 namespace everlaster
@@ -11,7 +12,20 @@ namespace everlaster
         readonly PresetLoadedTriggers _script;
         public readonly EventTrigger eventTrigger;
         public readonly PresetManager presetManager;
+        UnityEventsListener _panelEventsListener;
+
         bool _opened;
+        string _label;
+
+        UIDynamicButton _button;
+        public UIDynamicButton button
+        {
+            set
+            {
+                _button = value;
+                _label = _button.label;
+            }
+        }
 
         public TriggerWrapper(PresetLoadedTriggers script, string name, PresetManager presetManager)
         {
@@ -33,6 +47,9 @@ namespace everlaster
                     {
                         throw new Exception("TriggerActionsPanel is null");
                     }
+
+                    _panelEventsListener = eventTrigger.triggerActionsPanel.gameObject.AddComponent<UnityEventsListener>();
+                    _panelEventsListener.disabledHandlers += UpdateLabel;
                 }
 
                 _opened = true;
@@ -41,6 +58,23 @@ namespace everlaster
             {
                 _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(OpenPanel), e);
             }
+        }
+
+        public void UpdateLabel()
+        {
+            if(_button == null)
+            {
+                return;
+            }
+
+            string label = _label;
+            int count = eventTrigger.GetDiscreteActionsStart().Count;
+            if(count > 0)
+            {
+                label += $" ({count})".Bold();
+            }
+
+            _button.label = label;
         }
 
         public void Trigger()
@@ -78,7 +112,7 @@ namespace everlaster
         bool ValidateTrigger(EventTrigger trigger)
         {
             bool enableLogging = _script.enableLoggingBool.val;
-            foreach(var action in trigger.DiscreteActionsStart)
+            foreach(var action in trigger.GetDiscreteActionsStart())
             {
                 if(!action.receiverAtom)
                 {
@@ -158,6 +192,8 @@ namespace everlaster
                 {
                     eventTrigger.RestoreFromJSON(triggerJson);
                 }
+
+                UpdateLabel();
             }
             catch(Exception e)
             {
@@ -170,6 +206,11 @@ namespace everlaster
             if(presetManager != null)
             {
                 presetManager.postLoadEvent.RemoveListener(Trigger);
+            }
+
+            if(_panelEventsListener != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_panelEventsListener);
             }
         }
     }

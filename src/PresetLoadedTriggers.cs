@@ -7,7 +7,6 @@ using MeshVR;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using UnityEngine.UI;
 
 namespace everlaster
@@ -152,8 +151,11 @@ namespace everlaster
                 {
                     string presetManagerName = _personPresetManagerNames[i];
                     var trigger = _triggers.FirstOrDefault(t => t.presetManager.name == presetManagerName);
-                    exceptSet.Add(trigger);
-                    CreateTriggerButton(trigger);
+                    if(trigger != null)
+                    {
+                        exceptSet.Add(trigger);
+                        CreateTriggerButton(trigger);
+                    }
                 }
 
                 CreateSubHeader("Category2", "\nHair/Clothing Item Presets", 100f);
@@ -167,7 +169,8 @@ namespace everlaster
             remaining.Sort((a, b) => string.Compare(a.eventTrigger.Name, b.eventTrigger.Name, StringComparison.Ordinal));
             for(int i = 0; i < remaining.Count; i++)
             {
-                CreateTriggerButton(remaining[i]);
+                var trigger = remaining[i];
+                CreateTriggerButton(trigger);
             }
 
             CreateToggle(forceExecuteTriggersBool, true).label = "Force execute triggers";
@@ -210,17 +213,20 @@ namespace everlaster
                 return;
             }
 
-            var triggerButton = CreateButton(trigger.eventTrigger.Name);
-            triggerButton.AddListener(trigger.OpenPanel);
-            var textComponent = triggerButton.buttonText;
+            var uiDynamic = CreateButton(trigger.eventTrigger.Name);
+            uiDynamic.AddListener(trigger.OpenPanel);
+            var textComponent = uiDynamic.buttonText;
             textComponent.resizeTextForBestFit = true;
             textComponent.resizeTextMinSize = 24;
             textComponent.resizeTextMaxSize = 28;
             textComponent.alignment = TextAnchor.MiddleLeft;
-            triggerButton.height = 69;
-            var textRect = triggerButton.transform.Find("Text").GetComponent<RectTransform>();
+            uiDynamic.height = 69;
+            var textRect = uiDynamic.transform.Find("Text").GetComponent<RectTransform>();
             var size = textRect.sizeDelta;
             textRect.sizeDelta = new Vector2(size.x - 30f, size.y);
+
+            trigger.button = uiDynamic;
+            trigger.UpdateLabel();
         }
 
         static void DisableScroll(UIDynamicTextField uiDynamic)

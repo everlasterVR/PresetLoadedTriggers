@@ -137,6 +137,8 @@ namespace MacGruber
 			get; private set;
 		}
 
+		public List<TriggerActionDiscrete> GetDiscreteActionsStart() => discreteActionsStart;
+
 		private string name;
 		private string secondaryName;
 		private bool myNeedInit = true;
