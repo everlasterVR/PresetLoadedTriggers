@@ -6,7 +6,7 @@
   "scriptReferenceVersionOption": "Exact",
   "description": "v0.0.0. Create triggers that fire when a preset of a given type is loaded.",
   "credits": "MacGruber (MacGruber_Utils.cs, CC BY)",
-  "instructions": "Add to any plugins tab.",
+  "instructions": "Add to Person atom.",
   "promotionalLink": "https://patreon.com/everlaster",
   "programVersion": "1.22.0.3",
   "contentList": [

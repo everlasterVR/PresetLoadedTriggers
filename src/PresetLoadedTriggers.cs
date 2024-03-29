@@ -222,26 +222,32 @@ namespace everlaster
             // CreateAltPersonList();
 
             CreateToggle(forceExecuteTriggersBool, true).label = "Force execute triggers";
-            CreateToggle(enableLoggingBool, true).label = "Enable logging";
-
             {
                 const string infoText =
                     "If a trigger contains any actions where the receiverAtom or receiver isn't found when the event fires," +
-                    " none of the actions will execute unless Force execute triggers is enabled." +
-                    "\n\nIf logging is enabled, both successful and unsuccessful trigger events will be logged.";
+                    " none of the actions will execute unless Force execute triggers is enabled.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
-                uiDynamic.height = 300;
+                uiDynamic.height = 160;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
                 DisableScroll(uiDynamic);
             }
 
-            CreateToggle(enableAtomFallbackBool, true).label = "Use current atom if missing";
-
+            CreateToggle(enableLoggingBool, true).label = "Enable logging";
             {
-                const string infoText = "When restoring the plugin parameters, automatically use the current atom as the" +
+                const string infoText = "If logging is enabled, both successful and unsuccessful trigger events will be logged.";
+                var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
+                uiDynamic.height = 100;
+                uiDynamic.backgroundColor = Color.clear;
+                uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
+                DisableScroll(uiDynamic);
+            }
+
+            CreateToggle(enableAtomFallbackBool, true).label = "Use this atom if missing";
+            {
+                const string infoText = "When restoring the plugin parameters, automatically use this atom as the" +
                     " Receiver Atom on actions where the atom isn't found by the stored atom name." +
-                    " The Receiver Atom is swapped only if the stored Receiver and Receiver Target currently exist on the current atom.";
+                    " The Receiver Atom is swapped only if the stored Receiver and Receiver Target currently exist on this atom.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
                 uiDynamic.height = 300;
                 uiDynamic.backgroundColor = Color.clear;
