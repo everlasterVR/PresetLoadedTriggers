@@ -207,6 +207,8 @@ namespace everlaster
 
         public void OnDestroy()
         {
+            eventTrigger.OnRemove();
+
             if(presetManager != null)
             {
                 presetManager.postLoadEvent.RemoveListener(Trigger);

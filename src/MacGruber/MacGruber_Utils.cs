@@ -149,6 +149,7 @@ namespace MacGruber
 			SecondaryName = secondary;
 			Owner = owner;
 			handler = SimpleTriggerHandler.Instance;
+			SuperController.singleton.onAtomUIDRenameHandlers += OnAtomRename;
 		}
 
 		public CustomTrigger(CustomTrigger other)
@@ -157,10 +158,13 @@ namespace MacGruber
 			SecondaryName = other.SecondaryName;
 			Owner = other.Owner;
 			handler = SimpleTriggerHandler.Instance;
+			SuperController.singleton.onAtomUIDRenameHandlers += OnAtomRename;
 
 			JSONClass jc = other.GetJSON(Owner.subScenePrefix);
 			base.RestoreFromJSON(jc, Owner.subScenePrefix, false);
 		}
+
+		private void OnAtomRename(string oldName, string newName) => SyncAtomNames();
 
 		public void OpenPanel()
 		{
@@ -201,6 +205,8 @@ namespace MacGruber
 				base.RestoreFromJSON(new JSONClass());
 			}
 		}
+
+		public void OnRemove() => SuperController.singleton.onAtomUIDRenameHandlers -= OnAtomRename;
 	}
 
 	// Wrapper for easier handling of custom event triggers.
