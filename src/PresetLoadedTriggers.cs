@@ -371,7 +371,7 @@ namespace everlaster
                 var triggersArray = new JSONArray();
                 foreach(var pair in _triggers)
                 {
-                    var triggerJson = pair.Value.GetJSON();
+                    var triggerJson = pair.Value.GetJSON(base._subScenePrefix);
                     if(triggerJson != null)
                     {
                         triggersArray.Add(triggerJson);
@@ -409,7 +409,7 @@ namespace everlaster
                             TriggerWrapper trigger;
                             if(_triggers.TryGetValue(triggerName, out trigger))
                             {
-                                trigger.RestoreFromJSON(triggerJson);
+                                trigger.RestoreFromJSON(triggerJson, base._subScenePrefix, base.mergeRestore, setMissingToDefault);
                                 restoredSet.Add(triggerName);
                             }
                             else
@@ -425,7 +425,7 @@ namespace everlaster
                         {
                             if(!restoredSet.Contains(pair.Key))
                             {
-                                pair.Value.RestoreFromJSON(new JSONClass());
+                                pair.Value.RestoreFromJSON(new JSONClass(), base._subScenePrefix, base.mergeRestore);
                             }
                         }
                     }
@@ -454,7 +454,7 @@ namespace everlaster
                 {
                     foreach(var pair in _triggers)
                     {
-                        pair.Value.RestoreFromJSON(new JSONClass());
+                        pair.Value.RestoreFromJSON(new JSONClass(), base._subScenePrefix, base.mergeRestore);
                     }
                 }
             }

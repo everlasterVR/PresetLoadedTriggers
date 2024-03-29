@@ -153,7 +153,7 @@ namespace everlaster
 
                 if(ValidateTrigger(eventTrigger) || _script.forceExecuteTriggersBool.val)
                 {
-                    if(_script.enableLoggingBool.val)
+                    if(_script.enableLoggingBool.val && eventTrigger.GetDiscreteActionsStart().Count > 0)
                     {
                         JSONArray startActions;
                         string startActionsString = "";
@@ -225,9 +225,9 @@ namespace everlaster
             return true;
         }
 
-        public JSONClass GetJSON()
+        public JSONClass GetJSON(string subscenePrefix)
         {
-            var triggerJson = eventTrigger.GetJSON();
+            var triggerJson = eventTrigger.GetJSON(subscenePrefix);
             if(triggerJson != null && triggerJson.HasKey("startActions"))
             {
                 if(triggerJson.HasKey("transitionActions"))
@@ -261,14 +261,14 @@ namespace everlaster
             return null;
         }
 
-        public void RestoreFromJSON(JSONClass jc, bool setMissingToDefault = true)
+        public void RestoreFromJSON(JSONClass jc, string subscenePrefix, bool mergeRestore, bool setMissingToDefault = true)
         {
             try
             {
                 JSONClass triggerJson;
                 if(jc.TryGetValue(JSONKeys.TRIGGER, out triggerJson))
                 {
-                    eventTrigger.RestoreFromJSON(triggerJson);
+                    eventTrigger.RestoreFromJSON(triggerJson, subscenePrefix, mergeRestore);
                 }
                 else if(setMissingToDefault)
                 {
