@@ -171,6 +171,8 @@ namespace everlaster
 
         protected override void BuildUI()
         {
+            UITransform.Find("Scroll View").GetComponent<ScrollRect>().vertical = false;
+
             CreateSpacer().height = 100f;
             CreateSpacer(true).height = 85f;
             // CreateSpacer(true).height = 130;
@@ -243,7 +245,7 @@ namespace everlaster
                 textComponent.alignment = TextAnchor.LowerRight;
                 textComponent.fontSize = 26;
                 textComponent.color = new Color(0, 0, 0, 0.80f);
-                DisableScroll(uiDynamic, rightUIContent);
+                DisableScroll(uiDynamic);
             }
         }
 
@@ -321,47 +323,12 @@ namespace everlaster
             trigger.UpdateButton();
         }
 
-        static void DisableScroll(UIDynamicTextField uiDynamic) => DisableScroll(uiDynamic, uiDynamic.transform.parent);
-
-        static void DisableScroll(UIDynamicTextField uiDynamic, Transform passThroughTarget)
+        static void DisableScroll(UIDynamicTextField uiDynamic)
         {
             var scrollViewT = uiDynamic.transform.Find("Scroll View");
             scrollViewT.Find("Scrollbar Horizontal").SafeDestroyGameObject();
-
             var scrollRect = scrollViewT.GetComponent<ScrollRect>();
-            var content = scrollRect.content;
-            var movementType = scrollRect.movementType;
-            float elasticity = scrollRect.elasticity;
-            bool inertia = scrollRect.inertia;
-            float decelerationRate = scrollRect.decelerationRate;
-            float scrollSensitivity = scrollRect.scrollSensitivity;
-            var viewport = scrollRect.viewport;
-            var horizontalScrollbar = scrollRect.horizontalScrollbar;
-            var verticalScrollbar = scrollRect.verticalScrollbar;
-            var horizontalScrollbarVisibility = scrollRect.horizontalScrollbarVisibility;
-            var verticalScrollbarVisibility = scrollRect.verticalScrollbarVisibility;
-            float horizontalScrollbarSpacing = scrollRect.horizontalScrollbarSpacing;
-            float verticalScrollbarSpacing = scrollRect.verticalScrollbarSpacing;
-
-            DestroyImmediate(scrollRect);
-
-            var newScroll = scrollViewT.gameObject.AddComponent<PassThroughScroll>();
-            newScroll.target = passThroughTarget;
-            newScroll.content = content;
-            newScroll.movementType = movementType;
-            newScroll.elasticity = elasticity;
-            newScroll.inertia = inertia;
-            newScroll.decelerationRate = decelerationRate;
-            newScroll.scrollSensitivity = scrollSensitivity;
-            newScroll.viewport = viewport;
-            newScroll.horizontalScrollbar = horizontalScrollbar;
-            newScroll.verticalScrollbar = verticalScrollbar;
-            newScroll.horizontalScrollbarVisibility = horizontalScrollbarVisibility;
-            newScroll.verticalScrollbarVisibility = verticalScrollbarVisibility;
-            newScroll.horizontalScrollbarSpacing = horizontalScrollbarSpacing;
-            newScroll.verticalScrollbarSpacing = verticalScrollbarSpacing;
-            newScroll.vertical = false;
-            newScroll.horizontal = false;
+            scrollRect.vertical = false;
         }
 
         public override JSONClass GetJSON(bool includePhysical = true, bool includeAppearance = true, bool forceStore = false)

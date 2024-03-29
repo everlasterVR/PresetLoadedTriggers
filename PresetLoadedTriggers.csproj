@@ -88,7 +88,6 @@
 <!--        </Reference>-->
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="src\Components\PassThroughScroll.cs" />
         <Compile Include="src\Components\UnityEventsListener.cs" />
         <Compile Include="src\Extensions.cs" />
         <Compile Include="src\MacGruber\MacGruber_Utils.cs" />
