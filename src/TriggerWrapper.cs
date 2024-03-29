@@ -183,7 +183,7 @@ namespace everlaster
             }
         }
 
-        public void RestoreFromJSON(JSONClass jc)
+        public void RestoreFromJSON(JSONClass jc, bool setMissingToDefault = true)
         {
             try
             {
@@ -191,6 +191,10 @@ namespace everlaster
                 if(jc.TryGetValue(eventTrigger.Name, out triggerJson))
                 {
                     eventTrigger.RestoreFromJSON(triggerJson);
+                }
+                else if(setMissingToDefault)
+                {
+                    eventTrigger.RestoreFromJSON(new JSONClass());
                 }
 
                 UpdateLabel();

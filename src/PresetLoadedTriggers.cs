@@ -274,21 +274,34 @@ namespace everlaster
             var json = base.GetJSON(includePhysical, includeAppearance, forceStore);
             json[JSONKeys.VERSION] = VERSION;
             needsStore = true;
+            var triggersJson = new JSONClass();
 
             for(int i = 0; i < _triggers.Count; i++)
             {
-                _triggers[i].StoreToJSON(json);
+                _triggers[i].StoreToJSON(triggersJson);
             }
 
+            json[JSONKeys.TRIGGERS] = triggersJson;
             return json;
         }
 
         public override void LateRestoreFromJSON(JSONClass jc, bool restorePhysical = true, bool restoreAppearance = true, bool setMissingToDefault = true)
         {
             base.LateRestoreFromJSON(jc, restorePhysical, restoreAppearance, setMissingToDefault);
-            for(int i = 0; i < _triggers.Count; i++)
+            JSONClass triggersJson;
+            if(jc.TryGetValue(JSONKeys.TRIGGERS, out triggersJson))
             {
-                _triggers[i].RestoreFromJSON(jc);
+                for(int i = 0; i < _triggers.Count; i++)
+                {
+                    _triggers[i].RestoreFromJSON(triggersJson);
+                }
+            }
+            else if(setMissingToDefault)
+            {
+                for(int i = 0; i < _triggers.Count; i++)
+                {
+                    _triggers[i].RestoreFromJSON(new JSONClass());
+                }
             }
         }
 

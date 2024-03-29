@@ -9,6 +9,7 @@ namespace everlaster
 
     static class JSONKeys
     {
+        public const string TRIGGERS = "Triggers";
         public const string VERSION = "Version";
     }
 }
