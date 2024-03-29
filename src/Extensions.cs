@@ -22,21 +22,20 @@ namespace everlaster
         }
     }
 
-    static class GameObjectExtensions
-    {
-        public static T AddComponent<T>(this GameObject go, Action<T> callback) where T : MonoBehaviour
-        {
-            var component = go.AddComponent<T>();
-            callback(component);
-            return component;
-        }
-    }
-
     [SuppressMessage("ReSharper", "InconsistentNaming")]
     static class IEnumerableExtensions
     {
         public static string ToPrettyString<T>(this IEnumerable<T> enumerable, string separator = "\n")
-            => string.Join(separator, enumerable.Select(item => item.ToString()).ToArray());
+        {
+            var sb = new StringBuilder();
+            foreach(var item in enumerable)
+            {
+                sb.Append(item);
+                sb.Append(separator);
+            }
+
+            return sb.ToString();
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
@@ -127,82 +126,6 @@ namespace everlaster
         }
     }
 
-    static class JSONStorableExtensions
-    {
-        public static bool IsEnabledSafe(this JSONStorable storable) => storable && storable.enabled;
-    }
-
-    static class MVRScriptExtensions
-    {
-        public static string GetPackagePath(this MVRScript script)
-        {
-            string packageId = script.GetPackageId();
-            return packageId == null ? "" : $"{packageId}:/";
-        }
-
-        public static string GetPackageId(this MVRScript script)
-        {
-            string id = script.name.Substring(0, script.name.IndexOf('_'));
-            string filename = script.manager.GetJSON()["plugins"][id].Value;
-            return FileUtils.ParsePackageIdFromPath(filename);
-        }
-
-        public static bool IsDuplicate(this MVRScript script)
-        {
-            var pluginPrefixRegex = Utils.NewRegex(@"^plugin#\d+_");
-            var scripts = script.manager.GetComponentsInChildren<MVRScript>();
-            for(int i = 0; i < scripts.Length; i++)
-            {
-                var otherScript = scripts[i];
-                if(otherScript == script)
-                {
-                    continue;
-                }
-
-                if(pluginPrefixRegex.Replace(script.storeId, "") == pluginPrefixRegex.Replace(otherScript.storeId, ""))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public static Transform InstantiateTextField(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableTextFieldPrefab, parent);
-
-        public static Transform InstantiateButton(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableButtonPrefab, parent);
-
-        public static Transform InstantiateSlider(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableSliderPrefab, parent);
-
-        public static Transform InstantiateToggle(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableTogglePrefab, parent);
-
-        public static Transform InstantiatePopup(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurablePopupPrefab, parent);
-
-        public static Transform InstantiateScrollablePopup(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableScrollablePopupPrefab, parent);
-
-        public static Transform InstantiateFilterablePopup(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableFilterablePopupPrefab, parent);
-
-        public static Transform InstantiateColorPicker(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableColorPickerPrefab, parent);
-
-        public static Transform InstantiateSpacer(this MVRScript script, Transform parent = null) =>
-            Instantiate(script.manager.configurableSpacerPrefab, parent);
-
-        static Transform Instantiate(Transform prefab, Transform parent = null)
-        {
-            var transform = UnityEngine.Object.Instantiate(prefab, parent, false);
-            UnityEngine.Object.Destroy(transform.GetComponent<LayoutElement>());
-            return transform;
-        }
-    }
-
     [SuppressMessage("ReSharper", "UnusedMember.Global")]
     static class StringExtensions
     {
@@ -264,54 +187,5 @@ namespace everlaster
 
             uiDynamicButton.button.onClick.AddListener(callback);
         }
-    }
-
-    static class UIPopupExtensions
-    {
-        const int MAX_VISIBLE_COUNT = 400;
-
-        public static void SetPreviousOrLastValue(this UIPopup uiPopup)
-        {
-            if(uiPopup.currentValue == uiPopup.popupValues[0])
-            {
-                uiPopup.currentValue = uiPopup.LastVisibleValue();
-            }
-            else
-            {
-                uiPopup.SetPreviousValue();
-            }
-        }
-
-        public static void SetNextOrFirstValue(this UIPopup uiPopup)
-        {
-            if(uiPopup.currentValue == uiPopup.LastVisibleValue())
-            {
-                uiPopup.currentValue = uiPopup.popupValues[0];
-            }
-            else
-            {
-                uiPopup.SetNextValue();
-            }
-        }
-
-        static string LastVisibleValue(this UIPopup uiPopup) => uiPopup.popupValues.Length > MAX_VISIBLE_COUNT
-            ? uiPopup.popupValues[MAX_VISIBLE_COUNT - 1]
-            : uiPopup.popupValues.Last();
-    }
-
-    [SuppressMessage("ReSharper", "UnusedType.Global")]
-    [SuppressMessage("ReSharper", "UnusedMember.Global")]
-    static class Vector3Extensions
-    {
-        public static string ToPrettyString(this Vector3 vector, string format = "0.000") =>
-            $"({vector.x.ToString(format)}, {vector.y.ToString(format)}, {vector.z.ToString(format)})";
-    }
-
-    [SuppressMessage("ReSharper", "UnusedType.Global")]
-    [SuppressMessage("ReSharper", "UnusedMember.Global")]
-    static class Vector2Extensions
-    {
-        public static string ToPrettyString(this Vector2 vector, string format = "0.000") =>
-            $"({vector.x.ToString(format)}, {vector.y.ToString(format)})";
     }
 }

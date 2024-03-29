@@ -95,14 +95,7 @@
         <Compile Include="src\PresetLoadedTriggers.cs" />
         <Compile Include="src\Resources.cs" />
 	<Compile Include="src\Script.cs" />
-	<Compile Include="src\Storables\StorableAction.cs" />
-        <Compile Include="src\Storables\StorableBool.cs" />
-        <Compile Include="src\Storables\StorableFloat.cs" />
-        <Compile Include="src\Storables\StorableString.cs" />
-        <Compile Include="src\Storables\StorableStringChooser.cs" />
         <Compile Include="src\TriggerWrapper.cs" />
-        <Compile Include="src\Utils\DevUtils.cs" />
-        <Compile Include="src\Utils\FileUtils.cs" />
         <Compile Include="src\Utils\JSONUtils.cs" />
         <Compile Include="src\Utils\LogBuilder.cs" />
         <Compile Include="src\Utils\Utils.cs" />
