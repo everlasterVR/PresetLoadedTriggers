@@ -11,6 +11,17 @@ using UnityEngine.UI;
 
 namespace everlaster
 {
+    static class ComponentExtensions
+    {
+        public static void SafeDestroyGameObject(this Component component)
+        {
+            if(component != null)
+            {
+                UnityEngine.Object.Destroy(component.gameObject);
+            }
+        }
+    }
+
     static class GameObjectExtensions
     {
         public static T AddComponent<T>(this GameObject go, Action<T> callback) where T : MonoBehaviour

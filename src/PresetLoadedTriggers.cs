@@ -5,14 +5,31 @@ using UnityEngine;
 using MacGruber;
 using MeshVR;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using UnityEngine.UI;
 
 namespace everlaster
 {
     sealed class PresetLoadedTriggers : Script
     {
         public override bool ShouldIgnore() => false;
+
+        readonly List<string> _personPresetManagerNames = new List<string>
+        {
+            "AppearancePresets",
+            "PosePresets",
+            "MorphPresets",
+            "geometry", // = Preset = General Presets
+            "ClothingPresets",
+            "HairPresets",
+            "SkinPresets",
+            "PluginPresets",
+            "AnimationPresets",
+            "FemaleBreastPhysicsPresets",
+            "FemaleGlutePhysicsPresets",
+        };
 
         readonly List<TriggerWrapper> _triggers = new List<TriggerWrapper>();
         public JSONStorableBool forceExecuteTriggersBool { get; private set; }
@@ -26,11 +43,11 @@ namespace everlaster
 
                 if(containingAtom.type == "SessionPluginManager")
                 {
-                    AddTrigger("On Session Plugin Preset Loaded", containingAtom.GetComponent<PresetManager>());
+                    AddTrigger("Session Plugin Preset", containingAtom.GetComponent<PresetManager>());
                 }
                 else if(containingAtom.name == "CoreControl")
                 {
-                    AddTrigger("On Scene Plugin Preset Loaded", "PluginManagerPresets");
+                    AddTrigger("Scene Plugin Preset", "PluginManagerPresets");
                 }
                 else if(containingAtom.type == "Person")
                 {
@@ -51,7 +68,7 @@ namespace everlaster
                 }
                 else
                 {
-                    AddTrigger("On Preset Loaded", "Preset");
+                    AddTrigger("Preset", "Preset");
                 }
 
                 forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
@@ -105,41 +122,145 @@ namespace everlaster
 
         protected override void BuildUI()
         {
-            var title = CreateTextField(new JSONStorableString("Title", "\nPreset Loaded Triggers"));
-            title.UItext.fontSize = 32;
-            title.UItext.fontStyle = FontStyle.Bold;
-            title.UItext.alignment = TextAnchor.LowerCenter;
-            title.backgroundColor = Color.clear;
-            title.height = 100f;
+            CreateSpacer().height = 85;
+            CreateSpacer(true).height = 130;
+            var verticalLayoutGroup = leftUIContent.GetComponent<VerticalLayoutGroup>();
+            verticalLayoutGroup.spacing = 0f;
 
-            // TODO if person, sort always available by predefined, then sort dynamic below alphabetically
-            // TODO possible to sort clothing item presets into one category and hair item presets into another?
-            foreach(var trigger in _triggers)
             {
-                var triggerButton = CreateButton(trigger.GetName());
-                triggerButton.AddListener(trigger.OpenPanel);
-                var textComponent = triggerButton.buttonText;
-                textComponent.resizeTextForBestFit = true;
-                textComponent.resizeTextMinSize = 24;
-                textComponent.resizeTextMaxSize = 28;
-                textComponent.alignment = TextAnchor.MiddleLeft;
-                triggerButton.height = 50f;
-                var textRect = triggerButton.transform.Find("Text").GetComponent<RectTransform>();
-                var size = textRect.sizeDelta;
-                textRect.sizeDelta = new Vector2(size.x - 30f, size.y);
+                var uiDynamic = CreateTextField(new JSONStorableString("Title", "\nPreset Loaded Triggers"));
+                uiDynamic.height = 100f;
+                uiDynamic.backgroundColor = Color.clear;
+                var uiDynamicT = uiDynamic.transform;
+                uiDynamicT.SetParent(uiDynamicT.parent.parent, false);
+                uiDynamicT.SetAsFirstSibling();
+                var rectTransform = uiDynamicT.GetComponent<RectTransform>();
+                rectTransform.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 0f, 100f);
+                var textComponent = uiDynamic.UItext;
+                textComponent.fontSize = 36;
+                textComponent.fontStyle = FontStyle.Bold;
+                textComponent.alignment = TextAnchor.LowerCenter;
+                DisableScroll(uiDynamic);
+            }
+
+            var exceptSet = new HashSet<TriggerWrapper>();
+            if(containingAtom.type == "Person")
+            {
+                CreateSubHeader("Category1", "Built In Presets");
+
+                for(int i = 0; i < _personPresetManagerNames.Count; i++)
+                {
+                    string presetManagerName = _personPresetManagerNames[i];
+                    var trigger = _triggers.FirstOrDefault(t => t.presetManager.name == presetManagerName);
+                    exceptSet.Add(trigger);
+                    CreateTriggerButton(trigger);
+                }
+
+                CreateSubHeader("Category2", "\nHair/Clothing Item Presets", 100f);
+            }
+            else
+            {
+                CreateSpacer().height = 60f;
+            }
+
+            var remaining = new List<TriggerWrapper>(_triggers.Except(exceptSet));
+            remaining.Sort((a, b) => string.Compare(a.eventTrigger.Name, b.eventTrigger.Name, StringComparison.Ordinal));
+            for(int i = 0; i < remaining.Count; i++)
+            {
+                CreateTriggerButton(remaining[i]);
             }
 
             CreateToggle(forceExecuteTriggersBool, true).label = "Force execute triggers";
             CreateToggle(enableLoggingBool, true).label = "Enable logging";
 
-            const string infoText =
-                "\n\nIf an event trigger contains any invalid actions when the event fires, none of the actions will execute" +
-                " unless Force execute triggers is enabled." +
-                " Invalid means that the action's receiverAtom or receiver are null or not found in the scene." +
-                "\n\nIf logging is enabled, both successful and unsuccessful trigger events will be logged.";
-            var textField = CreateTextField(new JSONStorableString("Info", infoText), true);
-            textField.height = 500;
-            textField.backgroundColor = Color.clear;
+            {
+                const string infoText =
+                    "If a trigger contains any actions where the receiverAtom or receiver isn't found when the event fires," +
+                    " none of the actions will execute unless Force execute triggers is enabled." +
+                    "\n\nIf logging is enabled, both successful and unsuccessful trigger events will be logged.";
+                var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
+                uiDynamic.height = 300;
+                uiDynamic.backgroundColor = Color.clear;
+                uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
+                DisableScroll(uiDynamic);
+            }
+        }
+
+        void CreateSubHeader(string name, string text, float height = 60f)
+        {
+            var uiDynamic = CreateTextField(new JSONStorableString(name, text));
+            var layoutElement = uiDynamic.GetComponent<LayoutElement>();
+            layoutElement.preferredHeight = height;
+            layoutElement.minHeight = height;
+            uiDynamic.height = height;
+            uiDynamic.backgroundColor = Color.clear;
+            var textComponent = uiDynamic.UItext;
+            textComponent.fontSize = 32;
+            textComponent.alignment = TextAnchor.LowerLeft;
+            var scrollViewRect = uiDynamic.transform.Find("Scroll View").GetComponent<RectTransform>();
+            var pos = scrollViewRect.anchoredPosition;
+            scrollViewRect.anchoredPosition = new Vector2(pos.x, pos.y - 10f);
+            DisableScroll(uiDynamic);
+        }
+
+        void CreateTriggerButton(TriggerWrapper trigger)
+        {
+            if(trigger == null)
+            {
+                return;
+            }
+
+            var triggerButton = CreateButton(trigger.eventTrigger.Name);
+            triggerButton.AddListener(trigger.OpenPanel);
+            var textComponent = triggerButton.buttonText;
+            textComponent.resizeTextForBestFit = true;
+            textComponent.resizeTextMinSize = 24;
+            textComponent.resizeTextMaxSize = 28;
+            textComponent.alignment = TextAnchor.MiddleLeft;
+            triggerButton.height = 69;
+            var textRect = triggerButton.transform.Find("Text").GetComponent<RectTransform>();
+            var size = textRect.sizeDelta;
+            textRect.sizeDelta = new Vector2(size.x - 30f, size.y);
+        }
+
+        static void DisableScroll(UIDynamicTextField uiDynamic)
+        {
+            var scrollViewT = uiDynamic.transform.Find("Scroll View");
+            scrollViewT.Find("Scrollbar Horizontal").SafeDestroyGameObject();
+
+            var scrollRect = scrollViewT.GetComponent<ScrollRect>();
+            var content = scrollRect.content;
+            var movementType = scrollRect.movementType;
+            float elasticity = scrollRect.elasticity;
+            bool inertia = scrollRect.inertia;
+            float decelerationRate = scrollRect.decelerationRate;
+            float scrollSensitivity = scrollRect.scrollSensitivity;
+            var viewport = scrollRect.viewport;
+            var horizontalScrollbar = scrollRect.horizontalScrollbar;
+            var verticalScrollbar = scrollRect.verticalScrollbar;
+            var horizontalScrollbarVisibility = scrollRect.horizontalScrollbarVisibility;
+            var verticalScrollbarVisibility = scrollRect.verticalScrollbarVisibility;
+            float horizontalScrollbarSpacing = scrollRect.horizontalScrollbarSpacing;
+            float verticalScrollbarSpacing = scrollRect.verticalScrollbarSpacing;
+
+            DestroyImmediate(scrollRect);
+
+            var newScroll = scrollViewT.gameObject.AddComponent<PassThroughScroll>();
+            newScroll.content = content;
+            newScroll.movementType = movementType;
+            newScroll.elasticity = elasticity;
+            newScroll.inertia = inertia;
+            newScroll.decelerationRate = decelerationRate;
+            newScroll.scrollSensitivity = scrollSensitivity;
+            newScroll.viewport = viewport;
+            newScroll.horizontalScrollbar = horizontalScrollbar;
+            newScroll.verticalScrollbar = verticalScrollbar;
+            newScroll.horizontalScrollbarVisibility = horizontalScrollbarVisibility;
+            newScroll.verticalScrollbarVisibility = verticalScrollbarVisibility;
+            newScroll.horizontalScrollbarSpacing = horizontalScrollbarSpacing;
+            newScroll.verticalScrollbarSpacing = verticalScrollbarSpacing;
+            newScroll.vertical = false;
+            newScroll.horizontal = false;
         }
 
         public override JSONClass GetJSON(bool includePhysical = true, bool includeAppearance = true, bool forceStore = false)

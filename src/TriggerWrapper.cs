@@ -9,29 +9,27 @@ namespace everlaster
     class TriggerWrapper
     {
         readonly PresetLoadedTriggers _script;
-        readonly EventTrigger _eventTrigger;
-        readonly PresetManager _presetManager;
+        public readonly EventTrigger eventTrigger;
+        public readonly PresetManager presetManager;
         bool _opened;
-
-        public string GetName() => _eventTrigger.Name;
 
         public TriggerWrapper(PresetLoadedTriggers script, string name, PresetManager presetManager)
         {
             _script = script;
-            _eventTrigger = new EventTrigger(script, name);
-            _presetManager = presetManager;
-            _presetManager.postLoadEvent.AddListener(Trigger); // TODO add only after first trigger is created
+            eventTrigger = new EventTrigger(script, name);
+            this.presetManager = presetManager;
+            this.presetManager.postLoadEvent.AddListener(Trigger); // TODO add only after first trigger is created
         }
 
         public void OpenPanel()
         {
             try
             {
-                _eventTrigger.OpenPanel();
+                eventTrigger.OpenPanel();
 
                 if(!_opened)
                 {
-                    if(_eventTrigger.triggerActionsPanel == null)
+                    if(eventTrigger.triggerActionsPanel == null)
                     {
                         throw new Exception("TriggerActionsPanel is null");
                     }
@@ -41,7 +39,7 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", _eventTrigger.Name, nameof(OpenPanel), e);
+                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(OpenPanel), e);
             }
         }
 
@@ -54,26 +52,26 @@ namespace everlaster
                     return;
                 }
 
-                if(ValidateTrigger(_eventTrigger) || _script.forceExecuteTriggersBool.val)
+                if(ValidateTrigger(eventTrigger) || _script.forceExecuteTriggersBool.val)
                 {
                     if(_script.enableLoggingBool.val)
                     {
                         JSONArray startActions;
                         string startActionsString = "";
-                        if(_eventTrigger.GetJSON().TryGetValue("startActions", out startActions))
+                        if(eventTrigger.GetJSON().TryGetValue("startActions", out startActions))
                         {
                             startActionsString = JSONUtils.Prettify(startActions);
                         }
 
-                        _script.logBuilder.Message("Trigger {0} OK:\n{1}", _eventTrigger.Name, startActionsString);
+                        _script.logBuilder.Message("Trigger {0} OK:\n{1}", eventTrigger.Name, startActionsString);
                     }
 
-                    _eventTrigger.Trigger();
+                    eventTrigger.Trigger();
                 }
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", _eventTrigger.Name, nameof(Trigger), e);
+                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(Trigger), e);
             }
         }
 
@@ -130,7 +128,7 @@ namespace everlaster
 
         public void StoreToJSON(JSONClass jc)
         {
-            var eventJson = _eventTrigger.GetJSON();
+            var eventJson = eventTrigger.GetJSON();
             if(eventJson.HasKey("transitionActions"))
             {
                 eventJson.Remove("transitionActions");
@@ -146,7 +144,7 @@ namespace everlaster
                 var startActions = eventJson["startActions"].AsArray;
                 if(startActions.Count > 0)
                 {
-                    jc[_eventTrigger.Name] = eventJson;
+                    jc[eventTrigger.Name] = eventJson;
                 }
             }
         }
@@ -156,22 +154,22 @@ namespace everlaster
             try
             {
                 JSONClass triggerJson;
-                if(jc.TryGetValue(_eventTrigger.Name, out triggerJson))
+                if(jc.TryGetValue(eventTrigger.Name, out triggerJson))
                 {
-                    _eventTrigger.RestoreFromJSON(triggerJson);
+                    eventTrigger.RestoreFromJSON(triggerJson);
                 }
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", _eventTrigger.Name, nameof(RestoreFromJSON), e);
+                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(RestoreFromJSON), e);
             }
         }
 
         public void OnDestroy()
         {
-            if(_presetManager != null)
+            if(presetManager != null)
             {
-                _presetManager.postLoadEvent.RemoveListener(Trigger);
+                presetManager.postLoadEvent.RemoveListener(Trigger);
             }
         }
     }
