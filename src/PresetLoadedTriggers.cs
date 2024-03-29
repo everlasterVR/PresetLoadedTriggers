@@ -187,6 +187,22 @@ namespace everlaster
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
                 DisableScroll(uiDynamic);
             }
+
+            {
+                var t = Instantiate(manager.configurableTextFieldPrefab, UITransform.Find("Scroll View"));
+                var rectT = t.GetComponent<RectTransform>();
+                rectT.pivot = Vector2.zero;
+                rectT.anchoredPosition = new Vector2(881f, -1230f);
+                rectT.sizeDelta = new Vector2(-900f, 35f);
+                var uiDynamic = t.GetComponent<UIDynamicTextField>();
+                uiDynamic.text = $"v{VERSION}";
+                uiDynamic.backgroundColor = Color.clear;
+                var textComponent = uiDynamic.UItext;
+                textComponent.alignment = TextAnchor.LowerRight;
+                textComponent.fontSize = 26;
+                textComponent.color = new Color(0, 0, 0, 0.80f);
+                DisableScroll(uiDynamic, rightUIContent);
+            }
         }
 
         void CreateSubHeader(string name, string text, float height = 60f)
@@ -229,7 +245,9 @@ namespace everlaster
             trigger.UpdateLabel();
         }
 
-        static void DisableScroll(UIDynamicTextField uiDynamic)
+        static void DisableScroll(UIDynamicTextField uiDynamic) => DisableScroll(uiDynamic, uiDynamic.transform.parent);
+
+        static void DisableScroll(UIDynamicTextField uiDynamic, Transform passThroughTarget)
         {
             var scrollViewT = uiDynamic.transform.Find("Scroll View");
             scrollViewT.Find("Scrollbar Horizontal").SafeDestroyGameObject();
@@ -252,6 +270,7 @@ namespace everlaster
             DestroyImmediate(scrollRect);
 
             var newScroll = scrollViewT.gameObject.AddComponent<PassThroughScroll>();
+            newScroll.target = passThroughTarget;
             newScroll.content = content;
             newScroll.movementType = movementType;
             newScroll.elasticity = elasticity;
