@@ -30,9 +30,10 @@ namespace everlaster
             "FemaleGlutePhysicsPresets",
         };
 
-        readonly List<TriggerWrapper> _triggers = new List<TriggerWrapper>();
+        readonly Dictionary<string, TriggerWrapper> _triggers = new Dictionary<string, TriggerWrapper>();
         public JSONStorableBool forceExecuteTriggersBool { get; private set; }
         public JSONStorableBool enableLoggingBool { get; private set; }
+        DAZCharacterSelector _geometry;
 
         public override void Init()
         {
@@ -64,6 +65,8 @@ namespace everlaster
                             AddTrigger(ToTriggerName(id, sb), id);
                         }
                     }
+
+                    FindGeometry();
                 }
                 else
                 {
@@ -114,10 +117,37 @@ namespace everlaster
                 return;
             }
 
-            AddTrigger(name, presetManager);
+            DynamicItemParams dynamicItemParams = null;
+            var parent = storable.transform.parent;
+            var clothingItem = parent.GetComponent<DAZClothingItem>();
+            if(clothingItem != null)
+            {
+                dynamicItemParams = new DynamicItemParams("clothing", clothingItem.uid);
+            }
+            else
+            {
+                var hairItem = parent.GetComponent<DAZHairGroup>();
+                if(hairItem != null)
+                {
+                    dynamicItemParams = new DynamicItemParams("hair", hairItem.uid);
+                }
+            }
+
+            AddTrigger(name, presetManager, dynamicItemParams);
         }
 
-        void AddTrigger(string name, PresetManager presetManager) => _triggers.Add(new TriggerWrapper(this, name, presetManager));
+        void AddTrigger(string name, PresetManager presetManager, DynamicItemParams dynamicItemParams = null) =>
+            _triggers[name] = new TriggerWrapper(this, name, presetManager, dynamicItemParams);
+
+        void FindGeometry()
+        {
+            if(_geometry != null)
+            {
+                return;
+            }
+
+            _geometry = containingAtom.GetStorableByID("geometry") as DAZCharacterSelector;
+        }
 
         protected override void BuildUI()
         {
@@ -150,7 +180,7 @@ namespace everlaster
                 for(int i = 0; i < _personPresetManagerNames.Count; i++)
                 {
                     string presetManagerName = _personPresetManagerNames[i];
-                    var trigger = _triggers.FirstOrDefault(t => t.presetManager.name == presetManagerName);
+                    var trigger = _triggers.Values.FirstOrDefault(x => x.GetPresetManagerName() == presetManagerName);
                     if(trigger != null)
                     {
                         exceptSet.Add(trigger);
@@ -165,7 +195,7 @@ namespace everlaster
                 CreateSpacer().height = 60f;
             }
 
-            var remaining = new List<TriggerWrapper>(_triggers.Except(exceptSet));
+            var remaining = new List<TriggerWrapper>(_triggers.Values.Except(exceptSet));
             remaining.Sort((a, b) => string.Compare(a.eventTrigger.Name, b.eventTrigger.Name, StringComparison.Ordinal));
             for(int i = 0; i < remaining.Count; i++)
             {
@@ -242,7 +272,7 @@ namespace everlaster
             textRect.sizeDelta = new Vector2(size.x - 30f, size.y);
 
             trigger.button = uiDynamic;
-            trigger.UpdateLabel();
+            trigger.UpdateButton();
         }
 
         static void DisableScroll(UIDynamicTextField uiDynamic) => DisableScroll(uiDynamic, uiDynamic.transform.parent);
@@ -290,37 +320,179 @@ namespace everlaster
 
         public override JSONClass GetJSON(bool includePhysical = true, bool includeAppearance = true, bool forceStore = false)
         {
-            var json = base.GetJSON(includePhysical, includeAppearance, forceStore);
-            json[JSONKeys.VERSION] = VERSION;
-            needsStore = true;
-            var triggersJson = new JSONClass();
-
-            for(int i = 0; i < _triggers.Count; i++)
+            try
             {
-                _triggers[i].StoreToJSON(triggersJson);
-            }
+                var jc = base.GetJSON(includePhysical, includeAppearance, forceStore);
+                jc[JSONKeys.VERSION] = VERSION;
+                needsStore = true;
+                var triggersArray = new JSONArray();
+                foreach(var pair in _triggers)
+                {
+                    var triggerJson = pair.Value.GetJSON();
+                    if(triggerJson != null)
+                    {
+                        triggersArray.Add(triggerJson);
+                    }
+                }
 
-            json[JSONKeys.TRIGGERS] = triggersJson;
-            return json;
+                jc[JSONKeys.TRIGGERS] = triggersArray;
+                return jc;
+            }
+            catch(Exception e)
+            {
+                logBuilder.Error("{0}: {1}", nameof(GetJSON), e);
+                return new JSONClass();
+            }
         }
 
+        // TODO subscene support
         public override void LateRestoreFromJSON(JSONClass jc, bool restorePhysical = true, bool restoreAppearance = true, bool setMissingToDefault = true)
         {
-            base.LateRestoreFromJSON(jc, restorePhysical, restoreAppearance, setMissingToDefault);
-            JSONClass triggersJson;
-            if(jc.TryGetValue(JSONKeys.TRIGGERS, out triggersJson))
+            try
             {
-                for(int i = 0; i < _triggers.Count; i++)
+                base.LateRestoreFromJSON(jc, restorePhysical, restoreAppearance, setMissingToDefault);
+
+                JSONArray triggersArray;
+                if(jc.TryGetValue(JSONKeys.TRIGGERS, out triggersArray))
                 {
-                    _triggers[i].RestoreFromJSON(triggersJson);
+                    var restoredSet = new HashSet<string>();
+                    var missingList = new List<JSONClass>();
+
+                    foreach(JSONClass triggerJson in triggersArray)
+                    {
+                        string triggerName;
+                        if(triggerJson.TryGetValue(JSONKeys.NAME, out triggerName))
+                        {
+                            TriggerWrapper trigger;
+                            if(_triggers.TryGetValue(triggerName, out trigger))
+                            {
+                                trigger.RestoreFromJSON(triggerJson);
+                                restoredSet.Add(triggerName);
+                            }
+                            else
+                            {
+                                missingList.Add(triggerJson);
+                            }
+                        }
+                    }
+
+                    if(setMissingToDefault)
+                    {
+                        foreach(var pair in _triggers)
+                        {
+                            if(!restoredSet.Contains(pair.Key))
+                            {
+                                pair.Value.RestoreFromJSON(new JSONClass());
+                            }
+                        }
+                    }
+
+                    // Should only include dynamic items unless restored on a different atom type
+                    if(containingAtom.type == "Person")
+                    {
+                        for(int i = 0; i < missingList.Count; i++)
+                        {
+                            var triggerJson = missingList[i];
+                            JSONClass dynamicItemParamsJson;
+                            if(triggerJson.TryGetValue(JSONKeys.DYNAMIC_ITEM_PARAMS, out dynamicItemParamsJson))
+                            {
+                                string triggerName = triggerJson[JSONKeys.NAME].Value;
+                                var dynamicItemParams = DynamicItemParams.FromJSON(dynamicItemParamsJson);
+                                if(dynamicItemParams != null)
+                                {
+                                    AddTrigger(triggerName, null, dynamicItemParams);
+                                    SetupDynamicToggledCallback(dynamicItemParams.boolParamName);
+                                }
+                            }
+                        }
+                    }
+                }
+                else if(setMissingToDefault)
+                {
+                    foreach(var pair in _triggers)
+                    {
+                        pair.Value.RestoreFromJSON(new JSONClass());
+                    }
                 }
             }
-            else if(setMissingToDefault)
+            catch(Exception e)
             {
-                for(int i = 0; i < _triggers.Count; i++)
+                logBuilder.Error("{0}: {1}", nameof(LateRestoreFromJSON), e);
+            }
+        }
+
+        readonly List<JSONStorableBool> _boolParamsWithCallbacks = new List<JSONStorableBool>();
+
+        // TODO setup for enabled dynamic items on init
+        // TODO listen for dynamic item disabled -> disable trigger
+        //      (preset manager probably becomes null because of storable being deregistered)
+        // TODO listen for dynamic item enabled -> create trigger
+        void SetupDynamicToggledCallback(string boolParamName)
+        {
+            var geometry = containingAtom.GetStorableByID("geometry");
+            if(geometry == null)
+            {
+                logBuilder.Error("SetupCallback: geometry storable not found");
+                return;
+            }
+
+            var boolParam = geometry.GetBoolJSONParam(boolParamName);
+            if(boolParam == null)
+            {
+                logBuilder.Message($"Bool param {boolParamName} not found - referenced hair/clothing item referenced is not installed?");
+                return;
+            }
+
+            boolParam.setJSONCallbackFunction += OnDynamicToggled;
+            if(!_boolParamsWithCallbacks.Contains(boolParam))
+            {
+                _boolParamsWithCallbacks.Add(boolParam);
+            }
+        }
+
+        void OnDynamicToggled(JSONStorableBool boolParam)
+        {
+            if(!boolParam.val)
+            {
+                return;
+            }
+
+            var trigger = _triggers.Values.FirstOrDefault(x => x.dynamicItemParams.boolParamName == boolParam.name);
+            if(trigger == null)
+            {
+                return;
+            }
+
+            FindGeometry();
+            if(_geometry == null)
+            {
+                return;
+            }
+
+            var dynamicItemParams = trigger.dynamicItemParams;
+            PresetManager presetManager = null;
+            if(dynamicItemParams.type == "clothing")
+            {
+                var clothingItem = _geometry.GetClothingItem(dynamicItemParams.uid);
+                if(clothingItem != null)
                 {
-                    _triggers[i].RestoreFromJSON(new JSONClass());
+                    presetManager = clothingItem.GetComponentInChildren<PresetManager>();
+                    Debug.Log($"Found presetManager by uid: {dynamicItemParams.uid}");
                 }
+            }
+            else if(dynamicItemParams.type == "hair")
+            {
+                var hairItem = _geometry.GetHairItem(dynamicItemParams.uid);
+                if(hairItem != null)
+                {
+                    presetManager = hairItem.GetComponentInChildren<PresetManager>();
+                    Debug.Log($"Found presetManager by uid: {dynamicItemParams.uid}");
+                }
+            }
+
+            if(presetManager != null)
+            {
+                trigger.InitPresetManager(presetManager);
             }
         }
 
@@ -329,9 +501,15 @@ namespace everlaster
             try
             {
                 base.OnDestroy();
-                foreach(var trigger in _triggers)
+                foreach(var pair in _triggers)
                 {
-                    trigger.OnDestroy();
+                    pair.Value.OnDestroy();
+                }
+
+                for(int i = 0; i < _boolParamsWithCallbacks.Count; i++)
+                {
+                    var boolParam = _boolParamsWithCallbacks[i];
+                    boolParam.setJSONCallbackFunction -= OnDynamicToggled;
                 }
             }
             catch(Exception e)

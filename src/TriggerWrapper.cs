@@ -2,20 +2,62 @@
 using MacGruber;
 using MeshVR;
 using SimpleJSON;
-using System.Linq;
 using UnityEngine;
 
 namespace everlaster
 {
+    class DynamicItemParams
+    {
+        public readonly string type;
+        public readonly string uid;
+        public readonly string boolParamName;
+
+        public DynamicItemParams(string type, string uid)
+        {
+            this.type = type;
+            this.uid = uid;
+            boolParamName = $"{type}:{uid}";
+        }
+
+        public JSONClass GetJSON()
+        {
+            return new JSONClass
+            {
+                ["type"] = type,
+                ["uid"] = uid,
+            };
+        }
+
+        public static DynamicItemParams FromJSON(JSONClass jc)
+        {
+            string type;
+            if(!jc.TryGetValue("type", out type))
+            {
+                return null;
+            }
+
+            string uid;
+            if(!jc.TryGetValue("uid", out uid))
+            {
+                return null;
+            }
+
+            return new DynamicItemParams(type, uid);
+        }
+    }
+
     class TriggerWrapper
     {
         readonly PresetLoadedTriggers _script;
         public readonly EventTrigger eventTrigger;
-        public readonly PresetManager presetManager;
+        PresetManager _presetManager;
+        public readonly DynamicItemParams dynamicItemParams;
         UnityEventsListener _panelEventsListener;
 
         bool _opened;
+        bool _inactive;
         string _label;
+        public string GetPresetManagerName() => _presetManager != null ? _presetManager.name : null;
 
         UIDynamicButton _button;
         public UIDynamicButton button
@@ -27,12 +69,34 @@ namespace everlaster
             }
         }
 
-        public TriggerWrapper(PresetLoadedTriggers script, string name, PresetManager presetManager)
+        public TriggerWrapper(PresetLoadedTriggers script, string name, PresetManager presetManager, DynamicItemParams dynamicItemParams)
         {
             _script = script;
             eventTrigger = new EventTrigger(script, name);
-            this.presetManager = presetManager;
-            this.presetManager.postLoadEvent.AddListener(Trigger); // TODO add only after first trigger is created
+
+            if(presetManager != null)
+            {
+                InitPresetManager(presetManager);
+            }
+            else if(dynamicItemParams != null)
+            {
+                _inactive = true;
+            }
+            else
+            {
+                throw new Exception("PresetManager and DynamicItemParams cannot both be null");
+            }
+
+            this.dynamicItemParams = dynamicItemParams;
+        }
+
+        // TODO init only after first trigger is created
+        public void InitPresetManager(PresetManager presetManager)
+        {
+            _presetManager = presetManager;
+            _presetManager.postLoadEvent.AddListener(Trigger);
+            UpdateButton();
+            _inactive = false;
         }
 
         public void OpenPanel()
@@ -49,7 +113,7 @@ namespace everlaster
                     }
 
                     _panelEventsListener = eventTrigger.triggerActionsPanel.gameObject.AddComponent<UnityEventsListener>();
-                    _panelEventsListener.disabledHandlers += UpdateLabel;
+                    _panelEventsListener.disabledHandlers += UpdateButton;
                 }
 
                 _opened = true;
@@ -60,7 +124,7 @@ namespace everlaster
             }
         }
 
-        public void UpdateLabel()
+        public void UpdateButton()
         {
             if(_button == null)
             {
@@ -75,6 +139,7 @@ namespace everlaster
             }
 
             _button.label = label;
+            _button.textColor = _inactive ? Colors.inactive : Color.black;
         }
 
         public void Trigger()
@@ -160,27 +225,40 @@ namespace everlaster
             return true;
         }
 
-        public void StoreToJSON(JSONClass jc)
+        public JSONClass GetJSON()
         {
-            var eventJson = eventTrigger.GetJSON();
-            if(eventJson.HasKey("transitionActions"))
+            var triggerJson = eventTrigger.GetJSON();
+            if(triggerJson != null && triggerJson.HasKey("startActions"))
             {
-                eventJson.Remove("transitionActions");
-            }
+                if(triggerJson.HasKey("transitionActions"))
+                {
+                    triggerJson.Remove("transitionActions");
+                }
 
-            if(eventJson.HasKey("endActions"))
-            {
-                eventJson.Remove("endActions");
-            }
+                if(triggerJson.HasKey("endActions"))
+                {
+                    triggerJson.Remove("endActions");
+                }
 
-            if(eventJson.HasKey("startActions"))
-            {
-                var startActions = eventJson["startActions"].AsArray;
+                var startActions = triggerJson["startActions"].AsArray;
                 if(startActions.Count > 0)
                 {
-                    jc[eventTrigger.Name] = eventJson;
+                    var jc = new JSONClass
+                    {
+                        [JSONKeys.NAME] = eventTrigger.Name,
+                        [JSONKeys.TRIGGER] = triggerJson,
+                    };
+
+                    if(dynamicItemParams != null)
+                    {
+                        jc[JSONKeys.DYNAMIC_ITEM_PARAMS] = dynamicItemParams.GetJSON();
+                    }
+
+                    return jc;
                 }
             }
+
+            return null;
         }
 
         public void RestoreFromJSON(JSONClass jc, bool setMissingToDefault = true)
@@ -188,7 +266,7 @@ namespace everlaster
             try
             {
                 JSONClass triggerJson;
-                if(jc.TryGetValue(eventTrigger.Name, out triggerJson))
+                if(jc.TryGetValue(JSONKeys.TRIGGER, out triggerJson))
                 {
                     eventTrigger.RestoreFromJSON(triggerJson);
                 }
@@ -197,7 +275,7 @@ namespace everlaster
                     eventTrigger.RestoreFromJSON(new JSONClass());
                 }
 
-                UpdateLabel();
+                UpdateButton();
             }
             catch(Exception e)
             {
@@ -209,9 +287,9 @@ namespace everlaster
         {
             eventTrigger.OnRemove();
 
-            if(presetManager != null)
+            if(_presetManager != null)
             {
-                presetManager.postLoadEvent.RemoveListener(Trigger);
+                _presetManager.postLoadEvent.RemoveListener(Trigger);
             }
 
             if(_panelEventsListener != null)
