@@ -33,6 +33,8 @@ namespace everlaster
         readonly Dictionary<string, TriggerWrapper> _triggers = new Dictionary<string, TriggerWrapper>();
         public JSONStorableBool forceExecuteTriggersBool { get; private set; }
         public JSONStorableBool enableLoggingBool { get; private set; }
+        public JSONStorableBool enableAtomFallbackBool { get; set; }
+
         DAZCharacterSelector _geometry;
 
         public override void Init()
@@ -79,8 +81,10 @@ namespace everlaster
 
                 forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
                 enableLoggingBool = new JSONStorableBool("enableLogging", false);
+                enableAtomFallbackBool = new JSONStorableBool("enableAtomFallback", true);
                 RegisterBool(forceExecuteTriggersBool);
                 RegisterBool(enableLoggingBool);
+                RegisterBool(enableAtomFallbackBool);
 
                 initialized = true;
             }
@@ -225,6 +229,19 @@ namespace everlaster
                     "If a trigger contains any actions where the receiverAtom or receiver isn't found when the event fires," +
                     " none of the actions will execute unless Force execute triggers is enabled." +
                     "\n\nIf logging is enabled, both successful and unsuccessful trigger events will be logged.";
+                var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
+                uiDynamic.height = 300;
+                uiDynamic.backgroundColor = Color.clear;
+                uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
+                DisableScroll(uiDynamic);
+            }
+
+            CreateToggle(enableAtomFallbackBool, true).label = "Use current atom if missing";
+
+            {
+                const string infoText = "When restoring the plugin parameters, automatically use the current atom as the" +
+                    " Receiver Atom on actions where the atom isn't found by the stored atom name." +
+                    " The Receiver Atom is swapped only if the stored Receiver and Receiver Target currently exist on the current atom.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
                 uiDynamic.height = 300;
                 uiDynamic.backgroundColor = Color.clear;

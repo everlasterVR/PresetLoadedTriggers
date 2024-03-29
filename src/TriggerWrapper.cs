@@ -268,6 +268,10 @@ namespace everlaster
                 JSONClass triggerJson;
                 if(jc.TryGetValue(JSONKeys.TRIGGER, out triggerJson))
                 {
+                    if(_script.enableAtomFallbackBool.val)
+                    {
+                        ReceiverAtomFallback(triggerJson);
+                    }
                     eventTrigger.RestoreFromJSON(triggerJson, subscenePrefix, mergeRestore);
                 }
                 else if(setMissingToDefault)
@@ -280,6 +284,42 @@ namespace everlaster
             catch(Exception e)
             {
                 _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(RestoreFromJSON), e);
+            }
+        }
+
+        void ReceiverAtomFallback(JSONClass triggerJson)
+        {
+            JSONArray startActions;
+            if(!triggerJson.TryGetValue("startActions", out startActions))
+            {
+                return;
+            }
+
+            var atom = _script.containingAtom;
+            foreach(JSONClass actionJson in startActions)
+            {
+                string receiverAtomUid;
+                string receiverStoreId;
+                string receiverTargetName;
+                if(
+                    !actionJson.TryGetValue("receiverAtom", out receiverAtomUid) ||
+                    !actionJson.TryGetValue("receiver", out receiverStoreId) ||
+                    !actionJson.TryGetValue("receiverTargetName", out receiverTargetName)
+                )
+                {
+                    continue;
+                }
+
+                var receiverAtom = SuperController.singleton.GetAtomByUid(receiverAtomUid);
+                if(receiverAtom == null)
+                {
+                    var storable = atom.GetStorableByID(receiverStoreId);
+                    if(storable != null && storable.GetAllParamAndActionNames().Contains(receiverTargetName))
+                    {
+                        actionJson["receiverAtom"] = atom.uid;
+                        _script.logBuilder.Message("{0}: Receiver Atom not found by name {1}, using containing atom as fallback.", eventTrigger.Name, receiverAtomUid);
+                    }
+                }
             }
         }
 
