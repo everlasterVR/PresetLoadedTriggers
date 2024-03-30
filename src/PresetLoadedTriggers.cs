@@ -62,9 +62,9 @@ namespace everlaster
                 for(int i = 0; i < ids.Count; i++)
                 {
                     string id = ids[i];
-                    if(id == "Preset")
+                    if(id == "geometry")
                     {
-                        AddTrigger("General Preset", "Preset");
+                        AddTrigger("General Preset", "geometry");
                     }
                     // else if(id.EndsWith("Preset") || id.EndsWith("Presets")))
                     else if(_personPresetManagerNames.Contains(id))
@@ -82,6 +82,9 @@ namespace everlaster
                 forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
                 enableLoggingBool = new JSONStorableBool("enableLogging", false);
                 enableAtomFallbackBool = new JSONStorableBool("enableAtomFallback", true);
+                forceExecuteTriggersBool.storeType = JSONStorableParam.StoreType.Any;
+                enableLoggingBool.storeType = JSONStorableParam.StoreType.Any;
+                enableAtomFallbackBool.storeType = JSONStorableParam.StoreType.Any;
                 RegisterBool(forceExecuteTriggersBool);
                 RegisterBool(enableLoggingBool);
                 RegisterBool(enableAtomFallbackBool);
@@ -224,7 +227,7 @@ namespace everlaster
             CreateToggle(forceExecuteTriggersBool, true).label = "Force execute triggers";
             {
                 const string infoText =
-                    "If a trigger contains any actions where the receiverAtom or receiver isn't found when the event fires," +
+                    "If a trigger contains any actions where the Receiver Atom or the Receiver isn't found when the event fires," +
                     " none of the actions will execute unless Force execute triggers is enabled.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
                 uiDynamic.height = 160;
@@ -381,7 +384,6 @@ namespace everlaster
             }
         }
 
-        // TODO subscene support
         public override void LateRestoreFromJSON(JSONClass jc, bool restorePhysical = true, bool restoreAppearance = true, bool setMissingToDefault = true)
         {
             try
