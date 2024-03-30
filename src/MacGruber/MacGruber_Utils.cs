@@ -166,6 +166,9 @@ namespace MacGruber
 
 		private void OnAtomRename(string oldName, string newName) => SyncAtomNames();
 
+		GameObject ownerCloseButton;
+		GameObject ownerScrollView;
+
 		public void OpenPanel()
 		{
 			if (!SimpleTriggerHandler.Loaded)
@@ -175,6 +178,8 @@ namespace MacGruber
 			}
 
 			triggerActionsParent = Owner.UITransform;
+			ownerCloseButton = triggerActionsParent.Find("CloseButton").gameObject;
+			ownerScrollView = triggerActionsParent.Find("Scroll View").gameObject;
             InitTriggerUI();
             OpenTriggerActionsPanel();
 			if (myNeedInit)
@@ -187,6 +192,26 @@ namespace MacGruber
 
 				InitPanel();
 				myNeedInit = false;
+			}
+		}
+
+		public override void OpenTriggerActionsPanel()
+		{
+			ownerCloseButton.SetActive(false);
+			ownerScrollView.SetActive(false);
+			base.OpenTriggerActionsPanel();
+		}
+
+		public override void CloseTriggerActionsPanel()
+		{
+			base.CloseTriggerActionsPanel();
+			if (ownerCloseButton != null)
+			{
+				ownerCloseButton.SetActive(true);
+			}
+			if (ownerScrollView != null)
+			{
+				ownerScrollView.SetActive(true);
 			}
 		}
 

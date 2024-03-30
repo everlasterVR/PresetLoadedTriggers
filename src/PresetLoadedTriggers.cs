@@ -262,7 +262,7 @@ namespace everlaster
                 var t = Instantiate(manager.configurableTextFieldPrefab, UITransform.Find("Scroll View"));
                 var rectT = t.GetComponent<RectTransform>();
                 rectT.pivot = Vector2.zero;
-                rectT.anchoredPosition = new Vector2(881f, -1230f);
+                rectT.anchoredPosition = new Vector2(901f, -1230f);
                 rectT.sizeDelta = new Vector2(-900f, 35f);
                 var uiDynamic = t.GetComponent<UIDynamicTextField>();
                 uiDynamic.text = $"v{VERSION}";
