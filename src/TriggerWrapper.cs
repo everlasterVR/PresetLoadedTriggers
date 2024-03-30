@@ -142,7 +142,7 @@ namespace everlaster
             _button.textColor = _inactive ? Colors.inactive : Color.black;
         }
 
-        public void Trigger()
+        void Trigger()
         {
             try
             {

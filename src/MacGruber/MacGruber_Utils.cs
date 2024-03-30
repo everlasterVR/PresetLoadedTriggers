@@ -17,6 +17,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using AssetBundles;
+using everlaster;
 using SimpleJSON;
 
 namespace MacGruber
@@ -200,6 +201,17 @@ namespace MacGruber
 			ownerCloseButton.SetActive(false);
 			ownerScrollView.SetActive(false);
 			base.OpenTriggerActionsPanel();
+			Transform contentT = triggerActionsPanel.Find("Content");
+			if (contentT != null)
+			{
+				foreach (Transform childT in contentT)
+				{
+					if (!childT.name.Contains("Tab1"))
+					{
+						childT.SafeDestroyGameObject();
+					}
+				}
+			}
 		}
 
 		public override void CloseTriggerActionsPanel()
