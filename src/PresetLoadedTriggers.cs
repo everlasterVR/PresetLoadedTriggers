@@ -34,6 +34,8 @@ namespace everlaster
         public JSONStorableBool forceExecuteTriggersBool { get; private set; }
         public JSONStorableBool enableLoggingBool { get; private set; }
         public JSONStorableBool enableAtomFallbackBool { get; set; }
+        public JSONStorableBool waitUntilTargetsFoundBool { get; private set; }
+        public JSONStorableFloat waitUntilTargetsFoundTimeoutFloat { get; private set; }
 
         DAZCharacterSelector _geometry;
 
@@ -82,12 +84,18 @@ namespace everlaster
                 forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
                 enableLoggingBool = new JSONStorableBool("enableLogging", false);
                 enableAtomFallbackBool = new JSONStorableBool("enableAtomFallback", true);
+                waitUntilTargetsFoundBool = new JSONStorableBool("waitUntilTargetsFound", true);
+                waitUntilTargetsFoundTimeoutFloat = new JSONStorableFloat("waitUntilTargetsFoundTimeout", 2.00f, 0.00f, 10.00f);
                 forceExecuteTriggersBool.storeType = JSONStorableParam.StoreType.Any;
                 enableLoggingBool.storeType = JSONStorableParam.StoreType.Any;
                 enableAtomFallbackBool.storeType = JSONStorableParam.StoreType.Any;
+                waitUntilTargetsFoundBool.storeType = JSONStorableParam.StoreType.Any;
+                waitUntilTargetsFoundTimeoutFloat.storeType = JSONStorableParam.StoreType.Any;
                 RegisterBool(forceExecuteTriggersBool);
                 RegisterBool(enableLoggingBool);
                 RegisterBool(enableAtomFallbackBool);
+                RegisterBool(waitUntilTargetsFoundBool);
+                RegisterFloat(waitUntilTargetsFoundTimeoutFloat);
 
                 initialized = true;
             }
@@ -180,11 +188,12 @@ namespace everlaster
         {
             UITransform.Find("Scroll View").GetComponent<ScrollRect>().vertical = false;
 
-            CreateSpacer().height = 100f;
-            CreateSpacer(true).height = 85f;
+            CreateSpacer().height = 95f;
+            CreateSpacer(true).height = 88f;
             // CreateSpacer(true).height = 130;
-            var verticalLayoutGroup = leftUIContent.GetComponent<VerticalLayoutGroup>();
-            verticalLayoutGroup.spacing = 0f;
+
+            leftUIContent.GetComponent<VerticalLayoutGroup>().spacing = 0f;
+            rightUIContent.GetComponent<VerticalLayoutGroup>().spacing = 8f;
 
             {
                 var uiDynamic = CreateTextField(new JSONStorableString("Title", "\nPreset Loaded Triggers"));
@@ -230,7 +239,7 @@ namespace everlaster
                     "If a trigger contains any actions where the Receiver Atom or the Receiver isn't found when the event fires," +
                     " none of the actions will execute unless Force execute triggers is enabled.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
-                uiDynamic.height = 160;
+                uiDynamic.height = 160f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
                 DisableScroll(uiDynamic);
@@ -240,7 +249,7 @@ namespace everlaster
             {
                 const string infoText = "If logging is enabled, both successful and unsuccessful trigger events will be logged.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
-                uiDynamic.height = 100;
+                uiDynamic.height = 100f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
                 DisableScroll(uiDynamic);
@@ -248,11 +257,35 @@ namespace everlaster
 
             CreateToggle(enableAtomFallbackBool, true).label = "Use this atom if missing";
             {
-                const string infoText = "When restoring the plugin parameters, automatically use this atom as the" +
+                const string infoText = "When restoring the plugin parameters, use this atom as the" +
                     " Receiver Atom on actions where the atom isn't found by the stored atom name." +
                     " The Receiver Atom is swapped only if the stored Receiver and Receiver Target currently exist on this atom.";
                 var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
-                uiDynamic.height = 300;
+                uiDynamic.height = 258f;
+                uiDynamic.backgroundColor = Color.clear;
+                uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
+                DisableScroll(uiDynamic);
+            }
+
+            {
+                CreateSpacer(true).height = 10f;
+                var uiDynamic = CreateToggle(waitUntilTargetsFoundBool, true);
+                uiDynamic.label = "Wait until targets found";
+                var layoutElement = uiDynamic.GetComponent<LayoutElement>();
+                layoutElement.ignoreLayout = true;
+                var toggleRect = uiDynamic.GetComponent<RectTransform>();
+                toggleRect.pivot = Vector2.zero;
+                toggleRect.anchoredPosition = new Vector2(10f, -840f);
+                toggleRect.sizeDelta = new Vector2(-15f, 50f);
+                CreateSlider(waitUntilTargetsFoundTimeoutFloat, true).label = "Timeout";
+            }
+
+            {
+                const string infoText = "Wait until each action's Receiver Target is found on the Receiver" +
+                    " before executing the trigger.This can matter e.g. when the Receiver is a plugin that doesn't" +
+                    " create its triggerable parameters immediately on startup.";
+                var uiDynamic = CreateTextField(new JSONStorableString("Info", infoText), true);
+                uiDynamic.height = 230f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
                 DisableScroll(uiDynamic);

@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections;
 using MacGruber;
 using MeshVR;
 using SimpleJSON;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace everlaster
@@ -57,6 +59,10 @@ namespace everlaster
         bool _opened;
         bool _inactive;
         string _label;
+        bool _restoringFromJson;
+        readonly Stack<Coroutine> _triggerCoroutines = new Stack<Coroutine>();
+        Coroutine _restoreCoroutine;
+
         public string GetPresetManagerName() => _presetManager != null ? _presetManager.name : null;
 
         UIDynamicButton _button;
@@ -151,13 +157,88 @@ namespace everlaster
                     return;
                 }
 
+                _triggerCoroutines.Push(_script.StartCoroutine(TriggerCo()));
+            }
+            catch(Exception e)
+            {
+                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(Trigger), e);
+            }
+        }
+
+        IEnumerator TriggerCo()
+        {
+            while(_restoringFromJson)
+            {
+                yield return null;
+            }
+
+            var skipActions = new HashSet<TriggerActionDiscrete>();
+            if(_script.waitUntilTargetsFoundBool.val)
+            {
+                float timeout = Time.unscaledDeltaTime + _script.waitUntilTargetsFoundTimeoutFloat.val;
+                while(!FindReceiverActions(skipActions) && Time.unscaledDeltaTime < timeout)
+                {
+                    yield return null;
+                }
+            }
+
+            TriggerImmediate();
+
+            yield return null;
+            _triggerCoroutines.Pop();
+        }
+
+        bool FindReceiverActions(HashSet<TriggerActionDiscrete> skipActions)
+        {
+            foreach(var action in eventTrigger.GetDiscreteActionsStart())
+            {
+                if(skipActions.Contains(action) || action == null)
+                {
+                    continue;
+                }
+
+                if(action.receiverAtom == null)
+                {
+                    skipActions.Add(action);
+                }
+
+                var atom = SuperController.singleton.GetAtomByUid(action.receiverAtom.uid);
+                if(atom == null)
+                {
+                    skipActions.Add(action);
+                }
+
+                if(action.receiver == null)
+                {
+                    skipActions.Add(action);
+                }
+
+                var storable = atom.GetStorableByID(action.receiver.storeId);
+                if(storable == null)
+                {
+                    skipActions.Add(action);
+                }
+
+                if(!storable.GetAllParamAndActionNames().Contains(action.receiverTargetName))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        void TriggerImmediate()
+        {
+            try
+            {
                 if(ValidateTrigger(eventTrigger) || _script.forceExecuteTriggersBool.val)
                 {
                     if(_script.enableLoggingBool.val && eventTrigger.GetDiscreteActionsStart().Count > 0)
                     {
                         JSONArray startActions;
                         string startActionsString = "";
-                        if(eventTrigger.GetJSON().TryGetValue("startActions", out startActions))
+                        if(eventTrigger.GetJSON(_script.subScenePrefix).TryGetValue("startActions", out startActions))
                         {
                             startActionsString = JSONUtils.Prettify(startActions);
                         }
@@ -170,7 +251,7 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(Trigger), e);
+                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(TriggerImmediate), e);
             }
         }
 
@@ -179,7 +260,7 @@ namespace everlaster
             bool enableLogging = _script.enableLoggingBool.val;
             foreach(var action in trigger.GetDiscreteActionsStart())
             {
-                if(!action.receiverAtom)
+                if(action.receiverAtom == null)
                 {
                     if(enableLogging)
                     {
@@ -190,7 +271,7 @@ namespace everlaster
                 }
 
                 var atom = SuperController.singleton.GetAtomByUid(action.receiverAtom.uid);
-                if(!atom)
+                if(atom == null)
                 {
                     if(enableLogging)
                     {
@@ -200,7 +281,7 @@ namespace everlaster
                     return false;
                 }
 
-                if(!action.receiver)
+                if(action.receiver == null)
                 {
                     if(enableLogging)
                     {
@@ -211,7 +292,7 @@ namespace everlaster
                 }
 
                 var storable = atom.GetStorableByID(action.receiver.storeId);
-                if(!storable)
+                if(storable == null)
                 {
                     if(enableLogging)
                     {
@@ -268,11 +349,19 @@ namespace everlaster
                 JSONClass triggerJson;
                 if(jc.TryGetValue(JSONKeys.TRIGGER, out triggerJson))
                 {
-                    if(_script.enableAtomFallbackBool.val)
+                    if(_script.enableAtomFallbackBool.val && triggerJson.HasKey("startActions"))
                     {
-                        ReceiverAtomFallback(triggerJson);
+                        if(_restoreCoroutine != null)
+                        {
+                            _script.StopCoroutine(_restoreCoroutine);
+                        }
+
+                        _restoreCoroutine = _script.StartCoroutine(RestoreWithReceiverAtomFallbackCo(triggerJson, subscenePrefix, mergeRestore));
                     }
-                    eventTrigger.RestoreFromJSON(triggerJson, subscenePrefix, mergeRestore);
+                    else
+                    {
+                        eventTrigger.RestoreFromJSON(triggerJson, subscenePrefix, mergeRestore);
+                    }
                 }
                 else if(setMissingToDefault)
                 {
@@ -287,17 +376,49 @@ namespace everlaster
             }
         }
 
-        void ReceiverAtomFallback(JSONClass triggerJson)
+        IEnumerator RestoreWithReceiverAtomFallbackCo(JSONClass triggerJson, string subscenePrefix, bool mergeRestore)
         {
-            JSONArray startActions;
-            if(!triggerJson.TryGetValue("startActions", out startActions))
+            _restoringFromJson = true;
+            while(SuperController.singleton.isLoading)
             {
-                return;
+                yield return null;
             }
 
-            var atom = _script.containingAtom;
-            foreach(JSONClass actionJson in startActions)
+            var skipActions = new HashSet<JSONClass>();
+            var startActions = new List<JSONClass>();
+            foreach(JSONClass action in triggerJson["startActions"].AsArray)
             {
+                startActions.Add(action);
+            }
+
+            if(_script.waitUntilTargetsFoundBool.val)
+            {
+                float timeout = Time.unscaledDeltaTime + _script.waitUntilTargetsFoundTimeoutFloat.val;
+                while(!FindReceiverActionsInJsonWithAtomFallback(startActions, skipActions) && Time.unscaledDeltaTime < timeout)
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                FindReceiverActionsInJsonWithAtomFallback(startActions, skipActions);
+            }
+
+            eventTrigger.RestoreFromJSON(triggerJson, subscenePrefix, mergeRestore);
+            _restoringFromJson = false;
+            _restoreCoroutine = null;
+        }
+
+        bool FindReceiverActionsInJsonWithAtomFallback(List<JSONClass> startActions, HashSet<JSONClass> skipActions)
+        {
+            for(int i = 0; i < startActions.Count; i++)
+            {
+                var actionJson = startActions[i];
+                if(skipActions.Contains(actionJson))
+                {
+                    continue;
+                }
+
                 string receiverAtomUid;
                 string receiverStoreId;
                 string receiverTargetName;
@@ -307,24 +428,52 @@ namespace everlaster
                     !actionJson.TryGetValue("receiverTargetName", out receiverTargetName)
                 )
                 {
+                    skipActions.Add(actionJson);
                     continue;
                 }
 
                 var receiverAtom = SuperController.singleton.GetAtomByUid(receiverAtomUid);
-                if(receiverAtom == null)
+                if(receiverAtom != null)
                 {
-                    var storable = atom.GetStorableByID(receiverStoreId);
-                    if(storable != null && storable.GetAllParamAndActionNames().Contains(receiverTargetName))
+                    skipActions.Add(actionJson);
+                }
+                else
+                {
+                    var storable = _script.containingAtom.GetStorableByID(receiverStoreId);
+                    if(storable == null)
                     {
-                        actionJson["receiverAtom"] = atom.uid;
+                        skipActions.Add(actionJson);
+                        continue;
+                    }
+
+                    if(storable.GetAllParamAndActionNames().Contains(receiverTargetName))
+                    {
+                        actionJson["receiverAtom"] = _script.containingAtom.uid;
                         _script.logBuilder.Message("{0}: Receiver Atom not found by name {1}, using containing atom as fallback.", eventTrigger.Name, receiverAtomUid);
+                    }
+                    else
+                    {
+                        return false;
                     }
                 }
             }
+
+            return true;
         }
 
         public void OnDestroy()
         {
+            if(_restoreCoroutine != null)
+            {
+                _script.StopCoroutine(_restoreCoroutine);
+                _restoreCoroutine = null;
+            }
+
+            while(_triggerCoroutines.Count > 0)
+            {
+                _script.StopCoroutine(_triggerCoroutines.Pop());
+            }
+
             eventTrigger.OnRemove();
 
             if(_presetManager != null)
