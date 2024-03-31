@@ -1,4 +1,5 @@
 #define ENV_DEVELOPMENT
+using System;
 using UnityEngine.UI;
 
 namespace everlaster
@@ -42,10 +43,22 @@ namespace everlaster
 
         void OnUIEnabled()
         {
-            if(!_isUIBuilt)
+            try
             {
-                BuildUI();
-                _isUIBuilt = true;
+                if(!initialized)
+                {
+                    return;
+                }
+
+                if(!_isUIBuilt)
+                {
+                    BuildUI();
+                    _isUIBuilt = true;
+                }
+            }
+            catch(Exception e)
+            {
+                logBuilder.Error("{0}: {1}", nameof(OnUIEnabled), e);
             }
         }
 
