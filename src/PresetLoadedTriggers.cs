@@ -85,7 +85,7 @@ namespace everlaster
                 enableLoggingBool = new JSONStorableBool("enableLogging", false);
                 enableAtomFallbackBool = new JSONStorableBool("enableAtomFallback", true);
                 waitUntilTargetsFoundBool = new JSONStorableBool("waitUntilTargetsFound", true);
-                waitUntilTargetsFoundTimeoutFloat = new JSONStorableFloat("waitUntilTargetsFoundTimeout", 2.00f, 0.00f, 10.00f);
+                waitUntilTargetsFoundTimeoutFloat = new JSONStorableFloat("waitUntilTargetsFoundTimeout", 2.00f, 0.00f, 10.00f, false);
                 forceExecuteTriggersBool.storeType = JSONStorableParam.StoreType.Any;
                 enableLoggingBool.storeType = JSONStorableParam.StoreType.Any;
                 enableAtomFallbackBool.storeType = JSONStorableParam.StoreType.Any;
@@ -277,7 +277,7 @@ namespace everlaster
                 toggleRect.pivot = Vector2.zero;
                 toggleRect.anchoredPosition = new Vector2(10f, -840f);
                 toggleRect.sizeDelta = new Vector2(-15f, 50f);
-                CreateSlider(waitUntilTargetsFoundTimeoutFloat, true).label = "Timeout";
+                CreateSlider(waitUntilTargetsFoundTimeoutFloat, true).label = "Timeout (s)";
             }
 
             {

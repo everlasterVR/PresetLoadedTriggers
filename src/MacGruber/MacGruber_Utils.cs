@@ -249,9 +249,12 @@ namespace MacGruber
 	// Wrapper for easier handling of custom event triggers.
 	public class EventTrigger : CustomTrigger
 	{
-		public EventTrigger(MVRScript owner, string name, string secondary = null)
+		private JSONStorableFloat delayFloat;
+
+		public EventTrigger(MVRScript owner, string name, JSONStorableFloat delayFloat, string secondary = null)
 			: base(owner, name, secondary)
 		{
+			this.delayFloat = delayFloat;
 		}
 
 		public EventTrigger(EventTrigger other)
@@ -263,6 +266,20 @@ namespace MacGruber
 		{
 			Transform panel = triggerActionsPanel.Find("Panel");
 			panel.Find("Header Text").GetComponent<RectTransform>().sizeDelta = new Vector2(1000f, 50f);
+
+			Transform sliderT = UnityEngine.Object.Instantiate(Owner.manager.configurableSliderPrefab, triggerActionsPanel);
+			var sliderRect = sliderT.GetComponent<RectTransform>();
+			sliderRect.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 50, 120f);
+			sliderRect.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Right, 20f, 545f);
+			var image = sliderT.Find("Panel").GetComponent<Image>();
+			image.color = Color.clear;
+			var valueInputFieldText = sliderT.Find("ValueInputField/Text").GetComponent<Text>();
+			valueInputFieldText.color = Color.white;
+			var uiDynamic = sliderT.GetComponent<UIDynamicSlider>();
+			uiDynamic.labelText.color = Color.white;
+			delayFloat.slider = uiDynamic.slider;
+			uiDynamic.label = "Delay (s)";
+			uiDynamic.valueFormat = "F2";
 
 			Transform content = triggerActionsPanel.Find("Content");
 			content.Find("Tab1/Label").GetComponent<Text>().text = "Event Actions";

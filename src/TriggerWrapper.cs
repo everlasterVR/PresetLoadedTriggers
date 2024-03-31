@@ -55,6 +55,7 @@ namespace everlaster
         PresetManager _presetManager;
         public readonly DynamicItemParams dynamicItemParams;
         UnityEventsListener _panelEventsListener;
+        readonly JSONStorableFloat _delayFloat;
 
         bool _opened;
         bool _inactive;
@@ -78,7 +79,8 @@ namespace everlaster
         public TriggerWrapper(PresetLoadedTriggers script, string name, PresetManager presetManager, DynamicItemParams dynamicItemParams)
         {
             _script = script;
-            eventTrigger = new EventTrigger(script, name);
+            _delayFloat = new JSONStorableFloat("Delay", 0.00f, 0.00f, 10.00f, false);
+            eventTrigger = new EventTrigger(script, name, _delayFloat);
 
             if(presetManager != null)
             {
@@ -180,6 +182,11 @@ namespace everlaster
                 {
                     yield return null;
                 }
+            }
+
+            if(_delayFloat.val > 0)
+            {
+                yield return new WaitForSeconds(_delayFloat.val);
             }
 
             TriggerImmediate();
@@ -327,8 +334,10 @@ namespace everlaster
                     var jc = new JSONClass
                     {
                         [JSONKeys.NAME] = eventTrigger.Name,
-                        [JSONKeys.TRIGGER] = triggerJson,
                     };
+
+                    _delayFloat.StoreJSON(jc);
+                    jc[JSONKeys.TRIGGER] = triggerJson;
 
                     if(dynamicItemParams != null)
                     {
@@ -362,12 +371,14 @@ namespace everlaster
                     {
                         eventTrigger.RestoreFromJSON(triggerJson, subscenePrefix, mergeRestore);
                     }
+
                 }
                 else if(setMissingToDefault)
                 {
                     eventTrigger.RestoreFromJSON(new JSONClass());
                 }
 
+                _delayFloat.RestoreFromJSON(jc, true, true, setMissingToDefault);
                 UpdateButton();
             }
             catch(Exception e)
