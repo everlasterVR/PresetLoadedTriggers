@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections;
-using MacGruber;
+using MacGruber_Utils;
 using MeshVR;
 using SimpleJSON;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace everlaster
 {
@@ -48,16 +49,15 @@ namespace everlaster
         }
     }
 
-    class TriggerWrapper
+    sealed class TriggerWrapper
     {
         readonly PresetLoadedTriggers _script;
+        LogBuilder logBuilder => _script.logBuilder;
         public readonly EventTrigger eventTrigger;
         PresetManager _presetManager;
         public readonly DynamicItemParams dynamicItemParams;
-        UnityEventsListener _panelEventsListener;
         readonly JSONStorableFloat _delayFloat;
 
-        bool _opened;
         bool _inactive;
         string _label;
         bool _restoringFromJson;
@@ -80,7 +80,9 @@ namespace everlaster
         {
             _script = script;
             _delayFloat = new JSONStorableFloat("Delay", 0.00f, 0.00f, 10.00f, false);
-            eventTrigger = new EventTrigger(script, name, _delayFloat);
+            eventTrigger = new EventTrigger(script, name);
+            eventTrigger.panelDisabledHandlers += UpdateButton;
+            eventTrigger.onInitPanel += OnInitPanel;
 
             if(presetManager != null)
             {
@@ -98,6 +100,23 @@ namespace everlaster
             this.dynamicItemParams = dynamicItemParams;
         }
 
+        void OnInitPanel(Transform triggerActionsPanel)
+        {
+            var sliderT = UnityEngine.Object.Instantiate(_script.manager.configurableSliderPrefab, triggerActionsPanel);
+            var sliderRect = sliderT.GetComponent<RectTransform>();
+            sliderRect.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 50, 120f);
+            sliderRect.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Right, 20f, 545f);
+            var image = sliderT.Find("Panel").GetComponent<Image>();
+            image.color = Color.clear;
+            var valueInputFieldText = sliderT.Find("ValueInputField/Text").GetComponent<Text>();
+            valueInputFieldText.color = Color.white;
+            var uiDynamic = sliderT.GetComponent<UIDynamicSlider>();
+            uiDynamic.labelText.color = Color.white;
+            _delayFloat.slider = uiDynamic.slider;
+            uiDynamic.label = "Delay (s)";
+            uiDynamic.valueFormat = "F2";
+        }
+
         // TODO init only after first trigger is created
         public void InitPresetManager(PresetManager presetManager)
         {
@@ -105,31 +124,6 @@ namespace everlaster
             _presetManager.postLoadEvent.AddListener(Trigger);
             UpdateButton();
             _inactive = false;
-        }
-
-        public void OpenPanel()
-        {
-            try
-            {
-                eventTrigger.OpenPanel();
-
-                if(!_opened)
-                {
-                    if(eventTrigger.triggerActionsPanel == null)
-                    {
-                        throw new Exception("TriggerActionsPanel is null");
-                    }
-
-                    _panelEventsListener = eventTrigger.triggerActionsPanel.gameObject.AddComponent<UnityEventsListener>();
-                    _panelEventsListener.disabledHandlers += UpdateButton;
-                }
-
-                _opened = true;
-            }
-            catch(Exception e)
-            {
-                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(OpenPanel), e);
-            }
         }
 
         public void UpdateButton()
@@ -143,7 +137,7 @@ namespace everlaster
             int count = eventTrigger.GetDiscreteActionsStart().Count;
             if(count > 0)
             {
-                label += $" ({count})".Bold();
+                label += $" ({count})";
             }
 
             _button.label = label;
@@ -163,7 +157,7 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(Trigger), e);
+                logBuilder.Exception($"Triggering {eventTrigger.name} failed", e);
             }
         }
 
@@ -247,10 +241,10 @@ namespace everlaster
                         string startActionsString = "";
                         if(eventTrigger.GetJSON(_script.subScenePrefix).TryGetValue("startActions", out startActions))
                         {
-                            startActionsString = JSONUtils.Prettify(startActions);
+                            startActionsString = startActions.ToPrettyString();
                         }
 
-                        _script.logBuilder.Message("Trigger {0} OK:\n{1}", eventTrigger.Name, startActionsString);
+                        logBuilder.Message($"Trigger {eventTrigger.name} OK:\n{startActionsString}");
                     }
 
                     eventTrigger.Trigger();
@@ -258,7 +252,7 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(TriggerImmediate), e);
+                logBuilder.Exception($"Triggering {eventTrigger.name} failed", e);
             }
         }
 
@@ -271,7 +265,7 @@ namespace everlaster
                 {
                     if(enableLogging)
                     {
-                        _script.logBuilder.ErrorNoReport($"{trigger.Name}: Action '{action.name}' receiverAtom was null");
+                        logBuilder.Error($"{trigger.name}: Action '{action.name}' receiverAtom was null");
                     }
 
                     return false;
@@ -282,7 +276,7 @@ namespace everlaster
                 {
                     if(enableLogging)
                     {
-                        _script.logBuilder.ErrorNoReport($"{trigger.Name}: Action '{action.name}' receiverAtom '{action.receiverAtom.uid}' not found in scene");
+                        logBuilder.Error($"{trigger.name}: Action '{action.name}' receiverAtom '{action.receiverAtom.uid}' not found in scene");
                     }
 
                     return false;
@@ -292,7 +286,7 @@ namespace everlaster
                 {
                     if(enableLogging)
                     {
-                        _script.logBuilder.ErrorNoReport($"{trigger.Name}: Action '{action.name}' receiver was null");
+                        logBuilder.Error($"{trigger.name}: Action '{action.name}' receiver was null");
                     }
 
                     return false;
@@ -303,7 +297,7 @@ namespace everlaster
                 {
                     if(enableLogging)
                     {
-                        _script.logBuilder.ErrorNoReport($"{trigger.Name}: Action '{action.name}' receiver '{action.receiver.storeId}' not found on atom '{atom.name}'");
+                        logBuilder.Error($"{trigger.name}: Action '{action.name}' receiver '{action.receiver.storeId}' not found on atom '{atom.name}'");
                     }
 
                     return false;
@@ -333,7 +327,7 @@ namespace everlaster
                 {
                     var jc = new JSONClass
                     {
-                        [JSONKeys.NAME] = eventTrigger.Name,
+                        [JSONKeys.NAME] = eventTrigger.name,
                     };
 
                     _delayFloat.StoreJSON(jc);
@@ -383,7 +377,7 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                _script.logBuilder.Error("{0}.{1}: {2}", eventTrigger.Name, nameof(RestoreFromJSON), e);
+                logBuilder.Exception($"Restoring {eventTrigger.name} failed", e);
             }
         }
 
@@ -460,7 +454,7 @@ namespace everlaster
                     if(storable.GetAllParamAndActionNames().Contains(receiverTargetName))
                     {
                         actionJson["receiverAtom"] = _script.containingAtom.uid;
-                        _script.logBuilder.Message("{0}: Receiver Atom not found by name {1}, using containing atom as fallback.", eventTrigger.Name, receiverAtomUid);
+                        logBuilder.Message($"{eventTrigger.name}: Receiver Atom not found by name {receiverAtomUid}, using containing atom as fallback.");
                     }
                     else
                     {
@@ -490,11 +484,6 @@ namespace everlaster
             if(_presetManager != null)
             {
                 _presetManager.postLoadEvent.RemoveListener(Trigger);
-            }
-
-            if(_panelEventsListener != null)
-            {
-                UnityEngine.Object.DestroyImmediate(_panelEventsListener);
             }
         }
     }

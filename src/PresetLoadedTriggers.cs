@@ -2,7 +2,7 @@
 using System;
 using SimpleJSON;
 using UnityEngine;
-using MacGruber;
+using MacGruber_Utils;
 using MeshVR;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +14,7 @@ namespace everlaster
     sealed class PresetLoadedTriggers : Script
     {
         public override bool ShouldIgnore() => false;
+        protected override string className => nameof(PresetLoadedTriggers);
 
         readonly List<string> _personPresetManagerNames = new List<string>
         {
@@ -43,9 +44,9 @@ namespace everlaster
         {
             try
             {
-                if(containingAtom.type != "Person")
+                base.Init();
+                if(!IsValidAtomType(AtomType.PERSON))
                 {
-                    logBuilder.ErrorNoReport("Add to a Person atom, not {0}", containingAtom.type);
                     return;
                 }
 
@@ -101,7 +102,7 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                logBuilder.Error("{0}: {1}", nameof(Init), e);
+                logBuilder.Exception(e);
             }
         }
 
@@ -184,7 +185,7 @@ namespace everlaster
             _geometry = containingAtom.GetStorableByID("geometry") as DAZCharacterSelector;
         }
 
-        protected override void BuildUI()
+        protected override void CreateUI()
         {
             UITransform.Find("Scroll View").GetComponent<ScrollRect>().vertical = false;
 
@@ -208,7 +209,7 @@ namespace everlaster
                 textComponent.fontSize = 36;
                 textComponent.fontStyle = FontStyle.Bold;
                 textComponent.alignment = TextAnchor.LowerCenter;
-                DisableScroll(uiDynamic);
+                uiDynamic.DisableScroll();
             }
 
             if(containingAtom.type == "Person")
@@ -242,7 +243,7 @@ namespace everlaster
                 uiDynamic.height = 160f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
-                DisableScroll(uiDynamic);
+                uiDynamic.DisableScroll();
             }
 
             CreateToggle(enableLoggingBool, true).label = "Enable logging";
@@ -252,7 +253,7 @@ namespace everlaster
                 uiDynamic.height = 100f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
-                DisableScroll(uiDynamic);
+                uiDynamic.DisableScroll();
             }
 
             CreateToggle(enableAtomFallbackBool, true).label = "Use this atom if missing";
@@ -264,7 +265,7 @@ namespace everlaster
                 uiDynamic.height = 258f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
-                DisableScroll(uiDynamic);
+                uiDynamic.DisableScroll();
             }
 
             {
@@ -288,7 +289,7 @@ namespace everlaster
                 uiDynamic.height = 230f;
                 uiDynamic.backgroundColor = Color.clear;
                 uiDynamic.UItext.alignment = TextAnchor.UpperLeft;
-                DisableScroll(uiDynamic);
+                uiDynamic.DisableScroll();
             }
 
             {
@@ -304,7 +305,7 @@ namespace everlaster
                 textComponent.alignment = TextAnchor.LowerRight;
                 textComponent.fontSize = 26;
                 textComponent.color = new Color(0, 0, 0, 0.80f);
-                DisableScroll(uiDynamic);
+                uiDynamic.DisableScroll();
             }
         }
 
@@ -334,7 +335,7 @@ namespace everlaster
             }
 
             var remaining = new List<TriggerWrapper>(_triggers.Values.Except(exceptSet));
-            remaining.Sort((a, b) => string.Compare(a.eventTrigger.Name, b.eventTrigger.Name, StringComparison.Ordinal));
+            remaining.Sort((a, b) => string.Compare(a.eventTrigger.name, b.eventTrigger.name, StringComparison.Ordinal));
             for(int i = 0; i < remaining.Count; i++)
             {
                 var trigger = remaining[i];
@@ -356,7 +357,7 @@ namespace everlaster
             var scrollViewRect = uiDynamic.transform.Find("Scroll View").GetComponent<RectTransform>();
             var pos = scrollViewRect.anchoredPosition;
             scrollViewRect.anchoredPosition = new Vector2(pos.x, pos.y - 10f);
-            DisableScroll(uiDynamic);
+            uiDynamic.DisableScroll();
         }
 
         void CreateTriggerButton(TriggerWrapper trigger)
@@ -366,41 +367,34 @@ namespace everlaster
                 return;
             }
 
-            var uiDynamic = CreateButton(trigger.eventTrigger.Name);
-            uiDynamic.AddListener(trigger.OpenPanel);
+            var uiDynamic = CreateButton(trigger.eventTrigger.name);
+            uiDynamic.AddListener(trigger.eventTrigger.OpenPanel);
             var textComponent = uiDynamic.buttonText;
             textComponent.resizeTextForBestFit = true;
             textComponent.resizeTextMinSize = 24;
             textComponent.resizeTextMaxSize = 28;
             textComponent.alignment = TextAnchor.MiddleLeft;
             uiDynamic.height = 69;
-            var textRect = uiDynamic.transform.Find("Text").GetComponent<RectTransform>();
-            var size = textRect.sizeDelta;
-            textRect.sizeDelta = new Vector2(size.x - 30f, size.y);
+            var textRectT = textComponent.GetComponent<RectTransform>();
+            var size = textRectT.sizeDelta;
+            textRectT.sizeDelta = new Vector2(size.x - 30f, size.y);
 
             trigger.button = uiDynamic;
             trigger.UpdateButton();
         }
 
-        static void DisableScroll(UIDynamicTextField uiDynamic)
-        {
-            var scrollViewT = uiDynamic.transform.Find("Scroll View");
-            scrollViewT.Find("Scrollbar Horizontal").SafeDestroyGameObject();
-            var scrollRect = scrollViewT.GetComponent<ScrollRect>();
-            scrollRect.vertical = false;
-        }
-
         public override JSONClass GetJSON(bool includePhysical = true, bool includeAppearance = true, bool forceStore = false)
         {
+            var jc = base.GetJSON(includePhysical, includeAppearance, forceStore);
+
             try
             {
-                var jc = base.GetJSON(includePhysical, includeAppearance, forceStore);
                 jc[JSONKeys.VERSION] = VERSION;
                 needsStore = true;
                 var triggersArray = new JSONArray();
                 foreach(var pair in _triggers)
                 {
-                    var triggerJson = pair.Value.GetJSON(base._subScenePrefix);
+                    var triggerJson = pair.Value.GetJSON(_subScenePrefix);
                     if(triggerJson != null)
                     {
                         triggersArray.Add(triggerJson);
@@ -412,8 +406,8 @@ namespace everlaster
             }
             catch(Exception e)
             {
-                logBuilder.Error("{0}: {1}", nameof(GetJSON), e);
-                return new JSONClass();
+                logBuilder.Exception(e);
+                return jc;
             }
         }
 
@@ -437,7 +431,7 @@ namespace everlaster
                             TriggerWrapper trigger;
                             if(_triggers.TryGetValue(triggerName, out trigger))
                             {
-                                trigger.RestoreFromJSON(triggerJson, base._subScenePrefix, base.mergeRestore, setMissingToDefault);
+                                trigger.RestoreFromJSON(triggerJson, _subScenePrefix, mergeRestore, setMissingToDefault);
                                 restoredSet.Add(triggerName);
                             }
                             else
@@ -453,7 +447,7 @@ namespace everlaster
                         {
                             if(!restoredSet.Contains(pair.Key))
                             {
-                                pair.Value.RestoreFromJSON(new JSONClass(), base._subScenePrefix, base.mergeRestore);
+                                pair.Value.RestoreFromJSON(new JSONClass(), _subScenePrefix, mergeRestore);
                             }
                         }
                     }
@@ -482,13 +476,13 @@ namespace everlaster
                 {
                     foreach(var pair in _triggers)
                     {
-                        pair.Value.RestoreFromJSON(new JSONClass(), base._subScenePrefix, base.mergeRestore);
+                        pair.Value.RestoreFromJSON(new JSONClass(), _subScenePrefix, mergeRestore);
                     }
                 }
             }
             catch(Exception e)
             {
-                logBuilder.Error("{0}: {1}", nameof(LateRestoreFromJSON), e);
+                logBuilder.Exception(e);
             }
         }
 
@@ -567,32 +561,17 @@ namespace everlaster
             }
         }
 
-        protected override void OnDestroy()
+        protected override void DoDestroy()
         {
-            try
+            foreach(var pair in _triggers)
             {
-                base.OnDestroy();
-                foreach(var pair in _triggers)
-                {
-                    pair.Value.OnDestroy();
-                }
-
-                for(int i = 0; i < _boolParamsWithCallbacks.Count; i++)
-                {
-                    var boolParam = _boolParamsWithCallbacks[i];
-                    boolParam.setJSONCallbackFunction -= OnDynamicToggled;
-                }
+                pair.Value.OnDestroy();
             }
-            catch(Exception e)
+
+            for(int i = 0; i < _boolParamsWithCallbacks.Count; i++)
             {
-                if(initialized)
-                {
-                    SuperController.LogError($"{nameof(PresetLoadedTriggers)}.{nameof(OnDestroy)}: {e}");
-                }
-                else
-                {
-                    Debug.LogError($"{nameof(PresetLoadedTriggers)}.{nameof(OnDestroy)}: {e}");
-                }
+                var boolParam = _boolParamsWithCallbacks[i];
+                boolParam.setJSONCallbackFunction -= OnDynamicToggled;
             }
         }
     }
