@@ -34,13 +34,13 @@ namespace everlaster
         public static DynamicItemParams FromJSON(JSONClass jc)
         {
             string type;
-            if(!jc.TryGetValue("type", out type))
+            if(!jc.TryGetString("type", out type))
             {
                 return null;
             }
 
             string uid;
-            if(!jc.TryGetValue("uid", out uid))
+            if(!jc.TryGetString("uid", out uid))
             {
                 return null;
             }
@@ -239,7 +239,7 @@ namespace everlaster
                     {
                         JSONArray startActions;
                         string startActionsString = "";
-                        if(eventTrigger.GetJSON(_script.subScenePrefix).TryGetValue("startActions", out startActions))
+                        if(eventTrigger.GetJSON(_script.subScenePrefix).TryGetArray("startActions", out startActions))
                         {
                             startActionsString = startActions.ToPrettyString();
                         }
@@ -350,7 +350,7 @@ namespace everlaster
             try
             {
                 JSONClass triggerJson;
-                if(jc.TryGetValue(JSONKeys.TRIGGER, out triggerJson))
+                if(jc.TryGetClass(JSONKeys.TRIGGER, out triggerJson))
                 {
                     if(_script.enableAtomFallbackBool.val && triggerJson.HasKey("startActions"))
                     {
@@ -428,9 +428,9 @@ namespace everlaster
                 string receiverStoreId;
                 string receiverTargetName;
                 if(
-                    !actionJson.TryGetValue("receiverAtom", out receiverAtomUid) ||
-                    !actionJson.TryGetValue("receiver", out receiverStoreId) ||
-                    !actionJson.TryGetValue("receiverTargetName", out receiverTargetName)
+                    !actionJson.TryGetString("receiverAtom", out receiverAtomUid) ||
+                    !actionJson.TryGetString("receiver", out receiverStoreId) ||
+                    !actionJson.TryGetString("receiverTargetName", out receiverTargetName)
                 )
                 {
                     skipActions.Add(actionJson);

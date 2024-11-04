@@ -14,176 +14,7 @@ namespace everlaster
     sealed class PresetLoadedTriggers : Script
     {
         public override bool ShouldIgnore() => false;
-        protected override string className => nameof(PresetLoadedTriggers);
-
-        readonly List<string> _personPresetManagerNames = new List<string>
-        {
-            "AppearancePresets",
-            "PosePresets",
-            "MorphPresets",
-            "geometry", // = Preset = General Presets
-            "ClothingPresets",
-            "HairPresets",
-            "SkinPresets",
-            "PluginPresets",
-            "AnimationPresets",
-            "FemaleBreastPhysicsPresets",
-            "FemaleGlutePhysicsPresets",
-        };
-
-        readonly Dictionary<string, TriggerWrapper> _triggers = new Dictionary<string, TriggerWrapper>();
-        public JSONStorableBool forceExecuteTriggersBool { get; private set; }
-        public JSONStorableBool enableLoggingBool { get; private set; }
-        public JSONStorableBool enableAtomFallbackBool { get; set; }
-        public JSONStorableBool waitUntilTargetsFoundBool { get; private set; }
-        public JSONStorableFloat waitUntilTargetsFoundTimeoutFloat { get; private set; }
-
-        DAZCharacterSelector _geometry;
-
-        public override void Init()
-        {
-            try
-            {
-                base.Init();
-                if(!IsValidAtomType(AtomType.PERSON))
-                {
-                    return;
-                }
-
-                // if(containingAtom.type == "SessionPluginManager")
-                // {
-                //     AddTrigger("Session Plugin Preset", containingAtom.GetComponent<PresetManager>());
-                // }
-                // else if(containingAtom.name == "CoreControl")
-                // {
-                //     AddTrigger("Scene Plugin Preset", "PluginManagerPresets");
-                // }
-
-                SimpleTriggerHandler.LoadAssets();
-                var sb = new StringBuilder();
-                var ids = containingAtom.GetStorableIDs();
-                for(int i = 0; i < ids.Count; i++)
-                {
-                    string id = ids[i];
-                    if(id == "geometry")
-                    {
-                        AddTrigger("General Preset", "geometry");
-                    }
-                    // else if(id.EndsWith("Preset") || id.EndsWith("Presets")))
-                    else if(_personPresetManagerNames.Contains(id))
-                    {
-                        AddTrigger(ToTriggerName(id, sb), id);
-                    }
-                }
-
-                // FindGeometry();
-                // else
-                // {
-                //     AddTrigger("Preset", "Preset");
-                // }
-
-                forceExecuteTriggersBool = new JSONStorableBool("forceExecuteTriggers", false);
-                enableLoggingBool = new JSONStorableBool("enableLogging", false);
-                enableAtomFallbackBool = new JSONStorableBool("enableAtomFallback", true);
-                waitUntilTargetsFoundBool = new JSONStorableBool("waitUntilTargetsFound", true);
-                waitUntilTargetsFoundTimeoutFloat = new JSONStorableFloat("waitUntilTargetsFoundTimeout", 2.00f, 0.00f, 10.00f, false);
-                forceExecuteTriggersBool.storeType = JSONStorableParam.StoreType.Any;
-                enableLoggingBool.storeType = JSONStorableParam.StoreType.Any;
-                enableAtomFallbackBool.storeType = JSONStorableParam.StoreType.Any;
-                waitUntilTargetsFoundBool.storeType = JSONStorableParam.StoreType.Any;
-                waitUntilTargetsFoundTimeoutFloat.storeType = JSONStorableParam.StoreType.Any;
-                RegisterBool(forceExecuteTriggersBool);
-                RegisterBool(enableLoggingBool);
-                RegisterBool(enableAtomFallbackBool);
-                RegisterBool(waitUntilTargetsFoundBool);
-                RegisterFloat(waitUntilTargetsFoundTimeoutFloat);
-
-                initialized = true;
-            }
-            catch(Exception e)
-            {
-                logBuilder.Exception(e);
-            }
-        }
-
-        static string ToTriggerName(string input, StringBuilder sb)
-        {
-            var pattern = Utils.NewRegex("(?<!^)(?=[A-Z])");
-            string separatedString = pattern.Replace(input, " ");
-            int spaceIndex = separatedString.LastIndexOf(" ", StringComparison.Ordinal);
-
-            sb.Clear();
-            if(spaceIndex >= 0)
-            {
-                sb.Append(separatedString.Substring(0, spaceIndex));
-                sb.Append(" ");
-            }
-
-            sb.Append("Preset");
-            return sb.ToString();
-        }
-
-        void AddTrigger(string name, string storableId)
-        {
-            var storable = containingAtom.GetStorableByID(storableId);
-            if(storable == null)
-            {
-                logBuilder.Debug($"Storable {storableId} not found");
-                return;
-            }
-
-            var presetManager = storable.GetComponent<PresetManager>();
-            if(presetManager == null)
-            {
-                logBuilder.Debug($"PresetManager not found on {storableId}");
-                return;
-            }
-
-            // if(containingAtom.type == "Person")
-            // {
-            //     AddPersonTrigger(storable, name, presetManager);
-            // }
-            // else
-            // {
-            //     AddTrigger(name, presetManager);
-            // }
-
-            AddTrigger(name, presetManager);
-        }
-
-        void AddPersonTrigger(JSONStorable storable, string name, PresetManager presetManager)
-        {
-            DynamicItemParams dynamicItemParams = null;
-            var parent = storable.transform.parent;
-            var clothingItem = parent.GetComponent<DAZClothingItem>();
-            if(clothingItem != null)
-            {
-                dynamicItemParams = new DynamicItemParams("clothing", clothingItem.uid);
-            }
-            else
-            {
-                var hairItem = parent.GetComponent<DAZHairGroup>();
-                if(hairItem != null)
-                {
-                    dynamicItemParams = new DynamicItemParams("hair", hairItem.uid);
-                }
-            }
-
-            AddTrigger(name, presetManager, dynamicItemParams);
-        }
-
-        void AddTrigger(string name, PresetManager presetManager, DynamicItemParams dynamicItemParams = null) =>
-            _triggers[name] = new TriggerWrapper(this, name, presetManager, dynamicItemParams);
-
-        void FindGeometry()
-        {
-            if(_geometry != null)
-            {
-                return;
-            }
-
-            _geometry = containingAtom.GetStorableByID("geometry") as DAZCharacterSelector;
-        }
+        public override string className => nameof(PresetLoadedTriggers);
 
         protected override void CreateUI()
         {
@@ -309,6 +140,162 @@ namespace everlaster
             }
         }
 
+        readonly List<string> _personPresetManagerNames = new List<string>
+        {
+            "AppearancePresets",
+            "PosePresets",
+            "MorphPresets",
+            "geometry", // = Preset = General Presets
+            "ClothingPresets",
+            "HairPresets",
+            "SkinPresets",
+            "PluginPresets",
+            "AnimationPresets",
+            "FemaleBreastPhysicsPresets",
+            "FemaleGlutePhysicsPresets",
+        };
+
+        readonly Dictionary<string, TriggerWrapper> _triggers = new Dictionary<string, TriggerWrapper>();
+        public StorableBool forceExecuteTriggersBool { get; private set; }
+        public StorableBool enableLoggingBool { get; private set; }
+        public StorableBool enableAtomFallbackBool { get; set; }
+        public StorableBool waitUntilTargetsFoundBool { get; private set; }
+        public StorableFloat waitUntilTargetsFoundTimeoutFloat { get; private set; }
+
+        DAZCharacterSelector _geometry;
+
+        protected override void OnInit()
+        {
+            if(!IsValidAtomType(AtomType.PERSON))
+            {
+                return;
+            }
+
+            // if(containingAtom.type == "SessionPluginManager")
+            // {
+            //     AddTrigger("Session Plugin Preset", containingAtom.GetComponent<PresetManager>());
+            // }
+            // else if(containingAtom.name == "CoreControl")
+            // {
+            //     AddTrigger("Scene Plugin Preset", "PluginManagerPresets");
+            // }
+
+            SimpleTriggerHandler.LoadAssets();
+            var sb = new StringBuilder();
+            var ids = containingAtom.GetStorableIDs();
+            for(int i = 0; i < ids.Count; i++)
+            {
+                string id = ids[i];
+                if(id == "geometry")
+                {
+                    AddTrigger("General Preset", "geometry");
+                }
+                // else if(id.EndsWith("Preset") || id.EndsWith("Presets")))
+                else if(_personPresetManagerNames.Contains(id))
+                {
+                    AddTrigger(ToTriggerName(id, sb), id);
+                }
+            }
+
+            // FindGeometry();
+            // else
+            // {
+            //     AddTrigger("Preset", "Preset");
+            // }
+
+            forceExecuteTriggersBool = new StorableBool("forceExecuteTriggers", false);
+            enableLoggingBool = new StorableBool("enableLogging", false);
+            enableAtomFallbackBool = new StorableBool("enableAtomFallback", true);
+            waitUntilTargetsFoundBool = new StorableBool("waitUntilTargetsFound", true);
+            waitUntilTargetsFoundTimeoutFloat = new StorableFloat("waitUntilTargetsFoundTimeout", 2.00f, 0.00f, 10.00f, false);
+            RegisterBool(forceExecuteTriggersBool);
+            RegisterBool(enableLoggingBool);
+            RegisterBool(enableAtomFallbackBool);
+            RegisterBool(waitUntilTargetsFoundBool);
+            RegisterFloat(waitUntilTargetsFoundTimeoutFloat);
+
+            initialized = true;
+        }
+
+        static string ToTriggerName(string input, StringBuilder sb)
+        {
+            var pattern = Utils.NewRegex("(?<!^)(?=[A-Z])");
+            string separatedString = pattern.Replace(input, " ");
+            int spaceIndex = separatedString.LastIndexOf(" ", StringComparison.Ordinal);
+
+            sb.Clear();
+            if(spaceIndex >= 0)
+            {
+                sb.Append(separatedString.Substring(0, spaceIndex));
+                sb.Append(" ");
+            }
+
+            sb.Append("Preset");
+            return sb.ToString();
+        }
+
+        void AddTrigger(string name, string storableId)
+        {
+            var storable = containingAtom.GetStorableByID(storableId);
+            if(storable == null)
+            {
+                logBuilder.Debug($"Storable {storableId} not found");
+                return;
+            }
+
+            var presetManager = storable.GetComponent<PresetManager>();
+            if(presetManager == null)
+            {
+                logBuilder.Debug($"PresetManager not found on {storableId}");
+                return;
+            }
+
+            // if(containingAtom.type == "Person")
+            // {
+            //     AddPersonTrigger(storable, name, presetManager);
+            // }
+            // else
+            // {
+            //     AddTrigger(name, presetManager);
+            // }
+
+            AddTrigger(name, presetManager);
+        }
+
+        void AddPersonTrigger(JSONStorable storable, string name, PresetManager presetManager)
+        {
+            DynamicItemParams dynamicItemParams = null;
+            var parent = storable.transform.parent;
+            var clothingItem = parent.GetComponent<DAZClothingItem>();
+            if(clothingItem != null)
+            {
+                dynamicItemParams = new DynamicItemParams("clothing", clothingItem.uid);
+            }
+            else
+            {
+                var hairItem = parent.GetComponent<DAZHairGroup>();
+                if(hairItem != null)
+                {
+                    dynamicItemParams = new DynamicItemParams("hair", hairItem.uid);
+                }
+            }
+
+            AddTrigger(name, presetManager, dynamicItemParams);
+        }
+
+        void AddTrigger(string name, PresetManager presetManager, DynamicItemParams dynamicItemParams = null) =>
+            _triggers[name] = new TriggerWrapper(this, name, presetManager, dynamicItemParams);
+
+        void FindGeometry()
+        {
+            if(_geometry != null)
+            {
+                return;
+            }
+
+            _geometry = containingAtom.GetStorableByID("geometry") as DAZCharacterSelector;
+        }
+
         void CreateAltPersonList()
         {
             var exceptSet = new HashSet<TriggerWrapper>();
@@ -418,7 +405,7 @@ namespace everlaster
                 base.LateRestoreFromJSON(jc, restorePhysical, restoreAppearance, setMissingToDefault);
 
                 JSONArray triggersArray;
-                if(jc.TryGetValue(JSONKeys.TRIGGERS, out triggersArray))
+                if(jc.TryGetArray(JSONKeys.TRIGGERS, out triggersArray))
                 {
                     var restoredSet = new HashSet<string>();
                     var missingList = new List<JSONClass>();
@@ -426,7 +413,7 @@ namespace everlaster
                     foreach(JSONClass triggerJson in triggersArray)
                     {
                         string triggerName;
-                        if(triggerJson.TryGetValue(JSONKeys.NAME, out triggerName))
+                        if(triggerJson.TryGetString(JSONKeys.NAME, out triggerName))
                         {
                             TriggerWrapper trigger;
                             if(_triggers.TryGetValue(triggerName, out trigger))
@@ -459,7 +446,7 @@ namespace everlaster
                         {
                             var triggerJson = missingList[i];
                             JSONClass dynamicItemParamsJson;
-                            if(triggerJson.TryGetValue(JSONKeys.DYNAMIC_ITEM_PARAMS, out dynamicItemParamsJson))
+                            if(triggerJson.TryGetClass(JSONKeys.DYNAMIC_ITEM_PARAMS, out dynamicItemParamsJson))
                             {
                                 string triggerName = triggerJson[JSONKeys.NAME].Value;
                                 var dynamicItemParams = DynamicItemParams.FromJSON(dynamicItemParamsJson);
