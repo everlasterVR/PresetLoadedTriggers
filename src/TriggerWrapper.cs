@@ -80,7 +80,7 @@ namespace everlaster
         {
             _script = script;
             _delayFloat = new JSONStorableFloat("Delay", 0.00f, 0.00f, 10.00f, false);
-            eventTrigger = new EventTrigger(script, name);
+            eventTrigger = new EventTrigger(name);
             eventTrigger.panelDisabledHandlers += UpdateButton;
             eventTrigger.onInitPanel += OnInitPanel;
 

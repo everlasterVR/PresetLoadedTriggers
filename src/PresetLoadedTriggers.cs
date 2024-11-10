@@ -15,6 +15,8 @@ namespace everlaster
     {
         public override bool ShouldIgnore() => false;
         public override string className => nameof(PresetLoadedTriggers);
+        protected override bool useVersioning => true;
+        protected override bool needsLateRestore => true;
 
         protected override void CreateUI()
         {
@@ -355,7 +357,7 @@ namespace everlaster
             }
 
             var uiDynamic = CreateButton(trigger.eventTrigger.name);
-            uiDynamic.AddListener(trigger.eventTrigger.OpenPanel);
+            uiDynamic.AddListener(() => trigger.eventTrigger.OpenPanel(UITransform));
             var textComponent = uiDynamic.buttonText;
             textComponent.resizeTextForBestFit = true;
             textComponent.resizeTextMinSize = 24;
@@ -398,78 +400,70 @@ namespace everlaster
             }
         }
 
-        public override void LateRestoreFromJSON(JSONClass jc, bool restorePhysical = true, bool restoreAppearance = true, bool setMissingToDefault = true)
+        protected override void DoLateRestoreFromJSON(JSONClass jc, bool restorePhysical, bool restoreAppearance, bool setMissingToDefault)
         {
-            try
+            base.DoLateRestoreFromJSON(jc, restorePhysical, restoreAppearance, setMissingToDefault);
+            JSONArray triggersArray;
+            if(jc.TryGetArray(JSONKeys.TRIGGERS, out triggersArray))
             {
-                base.LateRestoreFromJSON(jc, restorePhysical, restoreAppearance, setMissingToDefault);
+                var restoredSet = new HashSet<string>();
+                var missingList = new List<JSONClass>();
 
-                JSONArray triggersArray;
-                if(jc.TryGetArray(JSONKeys.TRIGGERS, out triggersArray))
+                foreach(JSONClass triggerJson in triggersArray)
                 {
-                    var restoredSet = new HashSet<string>();
-                    var missingList = new List<JSONClass>();
-
-                    foreach(JSONClass triggerJson in triggersArray)
+                    string triggerName;
+                    if(triggerJson.TryGetString(JSONKeys.NAME, out triggerName))
                     {
-                        string triggerName;
-                        if(triggerJson.TryGetString(JSONKeys.NAME, out triggerName))
+                        TriggerWrapper trigger;
+                        if(_triggers.TryGetValue(triggerName, out trigger))
                         {
-                            TriggerWrapper trigger;
-                            if(_triggers.TryGetValue(triggerName, out trigger))
-                            {
-                                trigger.RestoreFromJSON(triggerJson, _subScenePrefix, mergeRestore, setMissingToDefault);
-                                restoredSet.Add(triggerName);
-                            }
-                            else
-                            {
-                                // missingList.Add(triggerJson);
-                            }
+                            trigger.RestoreFromJSON(triggerJson, _subScenePrefix, mergeRestore, setMissingToDefault);
+                            restoredSet.Add(triggerName);
                         }
-                    }
-
-                    if(setMissingToDefault)
-                    {
-                        foreach(var pair in _triggers)
+                        else
                         {
-                            if(!restoredSet.Contains(pair.Key))
-                            {
-                                pair.Value.RestoreFromJSON(new JSONClass(), _subScenePrefix, mergeRestore);
-                            }
-                        }
-                    }
-
-                    // Should only include dynamic items unless restored on a different atom type
-                    if(containingAtom.type == "Person")
-                    {
-                        for(int i = 0; i < missingList.Count; i++)
-                        {
-                            var triggerJson = missingList[i];
-                            JSONClass dynamicItemParamsJson;
-                            if(triggerJson.TryGetClass(JSONKeys.DYNAMIC_ITEM_PARAMS, out dynamicItemParamsJson))
-                            {
-                                string triggerName = triggerJson[JSONKeys.NAME].Value;
-                                var dynamicItemParams = DynamicItemParams.FromJSON(dynamicItemParamsJson);
-                                if(dynamicItemParams != null)
-                                {
-                                    AddTrigger(triggerName, null, dynamicItemParams);
-                                    SetupDynamicToggledCallback(dynamicItemParams.boolParamName);
-                                }
-                            }
+                            // missingList.Add(triggerJson);
                         }
                     }
                 }
-                else if(setMissingToDefault)
+
+                if(setMissingToDefault)
                 {
                     foreach(var pair in _triggers)
                     {
-                        pair.Value.RestoreFromJSON(new JSONClass(), _subScenePrefix, mergeRestore);
+                        if(!restoredSet.Contains(pair.Key))
+                        {
+                            pair.Value.RestoreFromJSON(new JSONClass(), _subScenePrefix, mergeRestore);
+                        }
+                    }
+                }
+
+                // Should only include dynamic items unless restored on a different atom type
+                if(containingAtom.type == "Person")
+                {
+                    for(int i = 0; i < missingList.Count; i++)
+                    {
+                        var triggerJson = missingList[i];
+                        JSONClass dynamicItemParamsJson;
+                        if(triggerJson.TryGetClass(JSONKeys.DYNAMIC_ITEM_PARAMS, out dynamicItemParamsJson))
+                        {
+                            string triggerName = triggerJson[JSONKeys.NAME].Value;
+                            var dynamicItemParams = DynamicItemParams.FromJSON(dynamicItemParamsJson);
+                            if(dynamicItemParams != null)
+                            {
+                                AddTrigger(triggerName, null, dynamicItemParams);
+                                SetupDynamicToggledCallback(dynamicItemParams.boolParamName);
+                            }
+                        }
                     }
                 }
             }
-            catch(Exception e)
+            else if(setMissingToDefault)
             {
-                logBuilder.Exception(e);
+                foreach(var pair in _triggers)
+                {
+                    pair.Value.RestoreFromJSON(new JSONClass(), _subScenePrefix, mergeRestore);
+                }
             }
         }
 

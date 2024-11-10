@@ -1,4 +1,5 @@
 Common\src\Components\UnityEventsListener.cs
+Common\src\Storables\StorableAction.cs
 Common\src\Storables\StorableBool.cs
 Common\src\Storables\StorableFloat.cs
 Common\src\Utils\FileUtils.cs
@@ -9,6 +10,3 @@ Common\src\Bindings.cs
 Common\src\Extensions.cs
 Common\src\Resources.cs
 Common\src\Script.cs
-src\PresetLoadedTriggers.cs
-src\Resources.cs
-src\TriggerWrapper.cs

@@ -92,6 +92,7 @@
         <None Include="meta.json" />
     </ItemGroup>
     <ItemGroup>
+        <Content Include="Common.cslist" />
         <Content Include="Common\scripts\*.sh"/>
         <Content Include=".gitignore"/>
         <Content Include="meta.json"/>
